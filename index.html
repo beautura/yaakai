@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#183b1a">
+  <meta name="description" content="Traditional Tamil nourishment, thoughtfully made for everyday living.">
+  <title>Yaakai | Tradition in Every Bite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="design.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#home" aria-label="Yaakai home"><i data-lucide="sprout"></i><span><strong>Yaakai</strong><small>உணவே மருந்து</small></span></a>
+    <nav class="desktop-nav" aria-label="Main navigation"><a href="#home">Home</a><a href="#shop">Products</a><a href="#story">About</a><a href="#contact">Contact</a></nav>
+    <div class="header-actions">
+      <button class="icon-button search-toggle" aria-label="Search products" title="Search products"><i data-lucide="search"></i></button>
+      <button class="bag-button" aria-label="Open shopping bag" title="Shopping bag"><i data-lucide="shopping-cart"></i><span class="bag-count">0</span></button><a class="button button-small" href="#shop">Shop Now</a>
+    </div>
+  </header>
+
+  <main id="home">
+    <section class="hero">
+      <div class="hero-content">
+        <h1>Tradition in Every Bite,<br>Health for Life</h1>
+        <p class="hero-tamil">நம் பாரம்பரியம்... நம் ஆரோக்கியம்...</p>
+        <p class="hero-subtitle">Pure <span>•</span> Natural <span>•</span> Traditional</p>
+        <a class="button button-dark" href="#shop">Explore Products <i data-lucide="arrow-right"></i></a>
+      </div>
+    </section>
+
+    <div class="values-strip" id="why-yaakai"><div><i data-lucide="leaf"></i><span>Natural<br>Ingredients</span></div><div><i data-lucide="cooking-pot"></i><span>Traditional<br>Recipes</span></div><div><i data-lucide="heart"></i><span>Made for<br>Everyday</span></div><div><i data-lucide="shield-check"></i><span>Thoughtfully<br>Made</span></div></div>
+
+    <section class="specialities section-wrap"><h2 class="lined-heading">Our Specialities</h2><div class="speciality-grid"><a href="#shop"><img src="https://images.unsplash.com/photo-1601050690597-df0568f70950?auto=format&fit=crop&w=600&q=80" alt="Traditional savoury food"><strong>Curry Leaf<br>Thokku</strong><span><i data-lucide="arrow-right"></i></span></a><a href="#shop"><img src="https://images.unsplash.com/photo-1471943311424-646960669fbc?auto=format&fit=crop&w=600&q=80" alt="A selection of nuts"><strong>Honey Nuts</strong><span><i data-lucide="arrow-right"></i></span></a><a href="#shop"><img src="https://images.unsplash.com/photo-1517093157656-b9eccef91cb1?auto=format&fit=crop&w=600&q=80" alt="Wholesome grains"><strong>Health Mix<br>Powder</strong><span><i data-lucide="arrow-right"></i></span></a><a href="#shop"><img src="https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&w=600&q=80" alt="Traditional spices"><strong>Immunity Mix</strong><span><i data-lucide="arrow-right"></i></span></a><a href="#shop"><img src="https://images.unsplash.com/photo-1532336414038-cf19250c5757?auto=format&fit=crop&w=600&q=80" alt="Colourful traditional spices"><strong>Traditional<br>Masala Powders</strong><span><i data-lucide="arrow-right"></i></span></a></div></section>
+
+    <section class="tradition"><div class="tradition-image" role="img" aria-label="A traditional temple"></div><div class="tradition-copy"><h2>Rooted in Tradition,<br>Crafted for Today</h2><p>Yaakai brings you the goodness of traditional Tamil recipes, made with thoughtfully chosen ingredients for your everyday table.</p><a class="button button-dark" href="#story">Know More <i data-lucide="arrow-right"></i></a></div></section>
+    <section class="home-cta"><div><h2>Choose Yaakai for a healthier tomorrow</h2><p>Experience the taste of tradition and the goodness of nature.</p></div><a class="button button-light" href="#shop">Shop Now <i data-lucide="arrow-right"></i></a></section>
+
+    <section class="shop-section section-wrap" id="shop">
+      <div class="section-banner products-banner"><div><h2>Our Products</h2><p>Traditional • Natural • Wholesome</p></div></div>
+      <div class="shop-toolbar"><div class="filters" aria-label="Product categories"><button class="filter active" data-category="All">All Products</button><button class="filter" data-category="Thokku">Thokku</button><button class="filter" data-category="Honey & nuts">Honey & nuts</button><button class="filter" data-category="Health mixes">Health mixes</button></div><div class="search-box"><i data-lucide="search"></i><input id="product-search" type="search" placeholder="Search products" aria-label="Search products"></div></div>
+      <div class="product-grid" id="product-grid"></div>
+      <p class="empty-products" hidden>No products found. Try a different search.</p>
+    </section>
+
+    <section id="story"><div class="section-banner about-banner"><div><h2>About Yaakai</h2><p>Our Story • Our Purpose</p></div></div><div class="about-content section-wrap"><div><h2>Rooted in Tradition,<br>Committed to Health</h2><p>Yaakai is born from a simple belief: the traditional foods we grew up with have a special place at the table. Inspired by Tamil heritage and prepared with care, Yaakai brings familiar flavours and everyday goodness to your home.</p><a class="button button-dark" href="#shop">Explore Products <i data-lucide="arrow-right"></i></a></div><div class="about-image" role="img" aria-label="A table of fresh ingredients"></div></div><div class="promise"><h2 class="lined-heading">Our Promise</h2><div class="promise-grid"><div><i data-lucide="leaf"></i><strong>Natural<br>Ingredients</strong></div><div><i data-lucide="heart"></i><strong>Made for<br>Your Family</strong></div><div><i data-lucide="trees"></i><strong>Traditional<br>Recipes</strong></div><div><i data-lucide="handshake"></i><strong>Made<br>with Care</strong></div></div></div></section>
+
+    <section id="contact"><div class="section-banner contact-banner"><div><h2>Contact Us</h2><p>We'd love to hear from you</p></div></div><div class="contact-content section-wrap"><div><h2>Get in Touch</h2><p>Have questions or feedback?<br>We'd love to hear from you.</p><p class="contact-location"><i data-lucide="map-pin"></i> Tamil Nadu, India</p><p>Contact details coming soon.</p></div><div class="contact-message"><h2>Send Us a Message</h2><p>Online enquiries will be available soon.</p><label>Name<input type="text" placeholder="Your name" disabled></label><label>Email<input type="email" placeholder="Your email" disabled></label><label>Message<textarea rows="4" placeholder="Your message" disabled></textarea></label><button class="button button-dark" disabled>Send Message <i data-lucide="arrow-right"></i></button></div></div></section>
+  </main>
+  <footer><div class="footer-main"><div><a class="brand footer-brand" href="#home"><i data-lucide="sprout"></i><span><strong>Yaakai</strong><small>உணவே மருந்து</small></span></a><p>Traditional foods for a healthier<br>and happier life.</p></div><div><span class="footer-heading">Quick Links</span><a href="#home">Home</a><a href="#shop">Products</a><a href="#story">About</a><a href="#contact">Contact</a></div><div><span class="footer-heading">Our Promise</span><a href="#why-yaakai">Our Ingredients</a><a href="#story">Our Story</a><a href="#shop">Our Products</a></div><div><span class="footer-heading">Get in Touch</span><p>Tamil Nadu, India</p><p>Contact details coming soon.</p></div></div><div class="footer-bottom"><span>© 2026 Yaakai. All rights reserved.</span><span>Made with care in India</span></div></footer>
+
+  <div class="drawer-overlay" hidden></div><aside class="cart-drawer" aria-labelledby="cart-title" aria-hidden="true"><div class="drawer-header"><div><p class="eyebrow">A LITTLE BAG OF GOODNESS</p><h2 id="cart-title">Your bag<span>.</span></h2></div><button class="icon-button close-cart" aria-label="Close shopping bag"><i data-lucide="x"></i></button></div><div class="cart-items"></div><div class="cart-bottom"><div class="subtotal"><span>Subtotal</span><strong id="cart-total">₹0</strong></div><p>Shipping is not included.</p><button class="button button-dark checkout-button" disabled>Online checkout coming soon</button></div></aside>
+</body>
+</html>

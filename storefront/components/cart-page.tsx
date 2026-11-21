@@ -1,0 +1,12 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { ArrowRight, Minus, Plus, Trash2 } from "lucide-react";
+import { useCart } from "@/components/cart-provider";
+import { formatPrice, products } from "@/lib/products";
+
+export function CartPage() {
+  const { items, subtotal, update, ready } = useCart();
+  return <main className="container commerce-page"><p className="eyebrow">YOUR YAAKAI SELECTION</p><h1>Your Cart</h1>{!ready ? <p>Loading your cart…</p> : items.length === 0 ? <div className="empty-cart"><h2>Your cart is waiting for a little goodness.</h2><p>Explore traditional favourites for your everyday table.</p><Link className="button" href="/products">Explore Products <ArrowRight size={16} /></Link></div> : <div className="commerce-grid"><div className="cart-list">{items.map(item => { const product = products.find(entry => entry.slug === item.slug); const variant = product?.variants.find(entry => entry.weight === item.weight); if (!product || !variant) return null; return <article className="cart-row" key={`${item.slug}-${item.weight}`}><Link className="cart-image" href={`/products/${product.slug}`}><Image src={product.image} alt={product.imageAlt} fill sizes="120px" /></Link><div><Link href={`/products/${product.slug}`}><h2>{product.name}</h2></Link><p>{item.weight} · {formatPrice(variant.price)}</p><div className="quantity"><button aria-label={`Decrease ${product.name} quantity`} onClick={() => update(item.slug, item.weight, item.quantity - 1)}><Minus size={15} /></button><span>{item.quantity}</span><button aria-label={`Increase ${product.name} quantity`} onClick={() => update(item.slug, item.weight, item.quantity + 1)}><Plus size={15} /></button></div></div><div className="cart-row-end"><strong>{formatPrice(variant.price * item.quantity)}</strong><button className="remove-button" aria-label={`Remove ${product.name}`} onClick={() => update(item.slug, item.weight, 0)}><Trash2 size={17} /></button></div></article>; })}</div><aside className="order-summary"><h2>Order Summary</h2><div className="summary-line"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div><p>Shipping and payment are not yet configured.</p><p className="sample-notice">Prices and weights are illustrative.</p><Link className="button full-button" href="/checkout">Continue to Checkout <ArrowRight size={16} /></Link><Link className="continue-link" href="/products">Continue shopping</Link></aside></div>}</main>;
+}
