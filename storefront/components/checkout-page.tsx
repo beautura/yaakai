@@ -11,7 +11,7 @@ export function CheckoutPage() {
   const orderId = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [order, setOrder] = useState<{ id: string; total: number; contactPhone: string } | null>(null);
+  const [order, setOrder] = useState<{ orderNumber: string; total: number; contactPhone: string } | null>(null);
   const [hasQr, setHasQr] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
@@ -28,9 +28,9 @@ export function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...details, id: orderId.current, items, whatsappConsent: form.has("whatsappConsent") }),
       });
-      const result = await response.json() as { id?: string; total?: number; contactPhone?: string; error?: string };
-      if (!response.ok || !result.id || typeof result.total !== "number") throw new Error(result.error || "Could not place your order.");
-      setOrder({ id: result.id, total: result.total, contactPhone: result.contactPhone || "" });
+      const result = await response.json() as { orderNumber?: string; total?: number; contactPhone?: string; error?: string };
+      if (!response.ok || !result.orderNumber || typeof result.total !== "number") throw new Error(result.error || "Could not place your order.");
+      setOrder({ orderNumber: result.orderNumber, total: result.total, contactPhone: result.contactPhone || "" });
       clear();
       fetch("/api/payment-qr", { cache: "no-store" }).then((qr) => setHasQr(qr.ok)).catch(() => setHasQr(false));
     } catch (failure) {
@@ -40,7 +40,7 @@ export function CheckoutPage() {
     }
   }
 
-  if (order) return <main className="container commerce-page"><p className="eyebrow">ORDER RECEIVED</p><h1>Thank you for choosing Yaakai</h1><p>Your order <strong>{order.id}</strong> has been received. Payment of {formatPrice(order.total)} is pending.</p>{hasQr && <div className="payment-qr"><Image src="/api/payment-qr" alt="Payment QR code" width={220} height={220} unoptimized /><p>Scan to pay, then contact us to confirm your payment.</p></div>}<p>For payment details, contact {order.contactPhone}. WhatsApp confirmation is sent when messaging is available.</p><Link className="button" href="/products">Continue shopping</Link></main>;
+  if (order) return <main className="container commerce-page"><p className="eyebrow">ORDER RECEIVED</p><h1>Thank you for choosing Yaakai</h1><p>Your order <strong>{order.orderNumber}</strong> has been received. Payment of {formatPrice(order.total)} is pending.</p>{hasQr && <div className="payment-qr"><Image src="/api/payment-qr" alt="Payment QR code" width={220} height={220} unoptimized /><p>Scan to pay, then contact us to confirm your payment.</p></div>}<p>For payment details, contact {order.contactPhone}. WhatsApp confirmation is sent when messaging is available.</p><Link className="button" href="/products">Continue shopping</Link></main>;
 
   return (
     <main className="container commerce-page">

@@ -12,6 +12,7 @@ export type AdminProduct = {
 export type OrderStatus = "New" | "Processing" | "Packed" | "Shipped" | "Delivered" | "Cancelled";
 export type AdminOrder = {
   id: string;
+  orderNumber: string;
   customer: string;
   email: string;
   phone: string;

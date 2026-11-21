@@ -247,7 +247,7 @@ function OrdersTable({
             <tr key={order.id}>
               <td>
                 <button className="table-link" onClick={() => onOpen(order)}>
-                  {order.id}
+                  {order.orderNumber}
                 </button>
               </td>
               <td>
@@ -267,7 +267,7 @@ function OrdersTable({
               <td>
                 <select
                   className="status-select"
-                  aria-label={`Update status for ${order.id}`}
+                  aria-label={`Update status for ${order.orderNumber}`}
                   value={order.status}
                   onChange={(event) =>
                     onStatus(order.id, event.target.value as OrderStatus)
@@ -665,7 +665,7 @@ function OrderDetails({
         <div className="modal-heading">
           <div>
             <p className="admin-kicker">ORDER DETAILS</p>
-            <h2 id="order-detail-title">{order.id}</h2>
+            <h2 id="order-detail-title">{order.orderNumber}</h2>
           </div>
           <button
             className="icon-button"
@@ -873,7 +873,7 @@ export function AdminPanel() {
       if (!response.ok) throw new Error("Could not update the order.");
       const refreshed = await loadAdminData();
       setSelectedOrder((current) => current?.id === orderId ? refreshed.orders.find((order) => order.id === orderId) ?? null : current);
-      setNotice(`${orderId} updated.`);
+      setNotice(`${refreshed.orders.find((order) => order.id === orderId)?.orderNumber || "Order"} updated.`);
     } catch {
       setNotice("Order update failed. Please retry.");
     }
@@ -970,7 +970,7 @@ export function AdminPanel() {
   if (!authenticated) return <LoginScreen onLogin={login} />;
 
   const filteredOrders = data.orders.filter((order) =>
-    `${order.id} ${order.customer} ${order.email} ${order.status}`
+    `${order.orderNumber} ${order.id} ${order.customer} ${order.email} ${order.status}`
       .toLowerCase()
       .includes(query.toLowerCase()),
   );

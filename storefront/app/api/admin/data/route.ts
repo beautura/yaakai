@@ -3,6 +3,7 @@ import type { AdminData, AdminOrder, AdminProduct, Expense, InventoryItem, Store
 import { isAdminRequest } from "@/lib/admin-auth";
 import { contactAddress, contactPhone } from "@/lib/site-info";
 import { getPostgresPool, inTransaction } from "@/lib/postgres";
+import { formatOrderNumber } from "@/lib/order-number";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ function mapProduct(row: Record<string, unknown>): AdminProduct {
   return { id: String(row.id), name: String(row.name), category: String(row.category), sku: String(row.sku), price: Number(row.price), cost: Number(row.cost), stock: Number(row.finished_stock), status: row.status === "Draft" ? "Draft" : "Active" };
 }
 function mapOrder(row: Record<string, unknown>): AdminOrder {
-  return { id: String(row.id), customer: String(row.customer_name), email: String(row.email), phone: String(row.phone), deliveryAddress: row.delivery_address as AdminOrder["deliveryAddress"], date: String(row.ordered_on).slice(0, 10), items: Array.isArray(row.items) ? row.items.map(String) : [], total: Number(row.total), cost: Number(row.cost), status: String(row.status) as AdminOrder["status"], payment: String(row.payment_status) as AdminOrder["payment"] };
+  return { id: String(row.id), orderNumber: formatOrderNumber(String(row.order_number)), customer: String(row.customer_name), email: String(row.email), phone: String(row.phone), deliveryAddress: row.delivery_address as AdminOrder["deliveryAddress"], date: String(row.ordered_on).slice(0, 10), items: Array.isArray(row.items) ? row.items.map(String) : [], total: Number(row.total), cost: Number(row.cost), status: String(row.status) as AdminOrder["status"], payment: String(row.payment_status) as AdminOrder["payment"] };
 }
 function mapInventory(row: Record<string, unknown>): InventoryItem {
   return { id: String(row.id), name: String(row.name), sku: String(row.sku), type: row.item_type === "Store stock" ? "Store stock" : "Raw material", unit: String(row.unit), onHand: Number(row.on_hand), reorderLevel: Number(row.reorder_level), costPerUnit: Number(row.cost_per_unit), supplier: String(row.supplier) };
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
     const pool = getPostgresPool();
     const [products, orders, inventory, expenses, settings] = await Promise.all([
       pool.query("SELECT id,name,category,sku,price,cost,finished_stock,status FROM admin_products ORDER BY name"),
-      pool.query("SELECT id,customer_name,email,phone,delivery_address,ordered_on,items,total,cost,status,payment_status FROM admin_orders ORDER BY ordered_on DESC,id DESC"),
+      pool.query("SELECT id,order_number,customer_name,email,phone,delivery_address,ordered_on,items,total,cost,status,payment_status FROM admin_orders ORDER BY ordered_on DESC,order_number DESC"),
       pool.query("SELECT id,name,sku,item_type,unit,on_hand,reorder_level,cost_per_unit,supplier FROM admin_inventory ORDER BY item_type,name"),
       pool.query("SELECT id,title,category,amount,spent_on,note FROM admin_expenses ORDER BY spent_on DESC,created_at DESC"),
       pool.query("SELECT store_name,address,phone,low_stock_threshold,tax_rate,currency FROM admin_settings WHERE id=1"),

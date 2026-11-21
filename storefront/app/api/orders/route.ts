@@ -3,6 +3,7 @@ import { products } from "@/lib/products";
 import { inTransaction } from "@/lib/postgres";
 import { contactPhone } from "@/lib/site-info";
 import { wakeWhatsApp } from "@/lib/whatsapp";
+import { formatOrderNumber } from "@/lib/order-number";
 
 export const runtime = "nodejs";
 
@@ -39,27 +40,30 @@ export async function POST(request: NextRequest) {
   }
   try {
     let storePhone = contactPhone;
+    let orderNumber = "";
     const result = await inTransaction(async (client) => {
       const settings = await client.query("SELECT phone FROM admin_settings WHERE id=1");
       storePhone = settings.rows[0]?.phone || contactPhone;
       await client.query("SELECT pg_advisory_xact_lock(hashtext($1))", [phone]);
-      const existing = await client.query("SELECT phone,total FROM admin_orders WHERE id=$1", [id]);
+      const existing = await client.query("SELECT phone,total,order_number FROM admin_orders WHERE id=$1", [id]);
       if (existing.rowCount) {
         if (existing.rows[0].phone !== phone) return "conflict";
         total = Number(existing.rows[0].total);
+        orderNumber = formatOrderNumber(String(existing.rows[0].order_number));
         return "existing";
       }
       const recent = await client.query("SELECT COUNT(*)::int AS count FROM admin_orders WHERE phone=$1 AND created_at > NOW() - INTERVAL '10 minutes'", [phone]);
       if (recent.rows[0].count >= 3) return "limited";
-      await client.query("INSERT INTO admin_orders (id,customer_name,email,phone,ordered_on,items,total,cost,status,payment_status,delivery_address) VALUES ($1,$2,$3,$4,CURRENT_DATE,$5::jsonb,$6,0,'New','Awaiting payment',$7::jsonb)", [id, name, email, phone, JSON.stringify(lines), total, JSON.stringify(address)]);
-      const message = `Thank you for choosing Yaakai!\n\nOrder confirmation: ${id}\n${lines.join("\n")}\nTotal: INR ${total}\nPayment: awaiting payment\n\nFor payment details, please contact ${storePhone}. Delivery charges will be confirmed by the store.`;
+      const inserted = await client.query("INSERT INTO admin_orders (id,customer_name,email,phone,ordered_on,items,total,cost,status,payment_status,delivery_address) VALUES ($1,$2,$3,$4,CURRENT_DATE,$5::jsonb,$6,0,'New','Awaiting payment',$7::jsonb) RETURNING order_number", [id, name, email, phone, JSON.stringify(lines), total, JSON.stringify(address)]);
+      orderNumber = formatOrderNumber(String(inserted.rows[0].order_number));
+      const message = `*YAAKAI | ORDER CONFIRMATION*\n\nVanakkam ${name.replace(/[\r\n]+/g, " ")},\nThank you for choosing Yaakai! Your order has been received.\n\n*Order ${orderNumber}*\n${lines.map((line) => `- ${line}`).join("\n")}\n\n*Subtotal: INR ${total.toLocaleString("en-IN")}*\nPayment: Awaiting payment\n\n*What's next?*\nPlease contact ${storePhone} for payment details. Delivery charges will be confirmed separately.\n\nWith care,\n*Team Yaakai*`;
       await client.query("INSERT INTO whatsapp_outbox (order_id,phone,message) VALUES ($1,$2,$3)", [id, phone, message]);
       return "created";
     });
     if (result === "conflict") return NextResponse.json({ error: "Order could not be submitted. Please refresh and try again." }, { status: 409 });
     if (result === "limited") return NextResponse.json({ error: "Too many orders from this number. Please try again later." }, { status: 429 });
     void wakeWhatsApp().catch(() => { console.error("Could not start WhatsApp delivery."); });
-    return NextResponse.json({ id, total, contactPhone: storePhone, status: "Awaiting payment" }, { status: result === "created" ? 201 : 200 });
+    return NextResponse.json({ id, orderNumber, total, contactPhone: storePhone, status: "Awaiting payment" }, { status: result === "created" ? 201 : 200 });
   } catch (error) {
     console.error("Order creation failed", error);
     return NextResponse.json({ error: "We could not place your order. Please try again." }, { status: 503 });
