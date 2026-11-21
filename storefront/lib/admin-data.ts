@@ -7,6 +7,12 @@ export type AdminProduct = {
   cost: number;
   stock: number;
   status: "Active" | "Draft";
+  description?: string;
+  ingredients?: string;
+  imagePath?: string;
+  imageAlt?: string;
+  featured?: boolean;
+  variants?: { weight: string; price: number }[];
 };
 
 export type OrderStatus = "New" | "Processing" | "Packed" | "Shipped" | "Delivered" | "Cancelled";
@@ -36,4 +42,4 @@ export const emptyAdminData: AdminData = {
 };
 
 export const orderStatuses: OrderStatus[] = ["New", "Processing", "Packed", "Shipped", "Delivered", "Cancelled"];
-export const formatAdminPrice = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(value);
+export const formatAdminPrice = (value: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(value);

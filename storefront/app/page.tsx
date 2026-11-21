@@ -2,7 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, CookingPot, Heart, Leaf, ShieldCheck } from "lucide-react";
 import { HomeAboutSection, HomeContactSection } from "@/components/home-sections";
-import { products } from "@/lib/products";
+import { HomeSpecialties } from "@/components/home-specialties";
 
 const benefits = [
   { icon: Leaf, title: "100% Natural", subtitle: "Ingredients" },
@@ -46,20 +46,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="container specialties" aria-labelledby="specialties-title">
-        <h2 className="lined-heading" id="specialties-title">Our Specialities</h2>
-        <div className="specialty-grid">
-          {products.slice(0, 5).map(product => (
-            <Link className="specialty-card" href={`/products/${product.slug}`} key={product.slug}>
-              <span className="specialty-image">
-                <Image src={product.image} alt={product.imageAlt} fill sizes="(max-width: 767px) 20vw, 20vw" />
-              </span>
-              <strong>{product.name}</strong>
-              <span className="circle-arrow"><ArrowRight size={15} /></span>
-            </Link>
-          ))}
-        </div>
-      </section>
+      <HomeSpecialties />
 
       <section className="story-band" aria-label="Yaakai story preview">
         <div className="story-temple" role="img" aria-label="Tamil Nadu temple" />

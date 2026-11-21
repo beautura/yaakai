@@ -9,6 +9,37 @@ CREATE TABLE IF NOT EXISTS admin_products (
   status TEXT NOT NULL DEFAULT 'Active' CHECK (status IN ('Active','Draft')),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE admin_products ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT '';
+ALTER TABLE admin_products ADD COLUMN IF NOT EXISTS ingredients TEXT NOT NULL DEFAULT '';
+ALTER TABLE admin_products ADD COLUMN IF NOT EXISTS image_path TEXT NOT NULL DEFAULT '';
+ALTER TABLE admin_products ADD COLUMN IF NOT EXISTS image_alt TEXT NOT NULL DEFAULT '';
+ALTER TABLE admin_products ADD COLUMN IF NOT EXISTS featured BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE admin_products ADD COLUMN IF NOT EXISTS variants JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+CREATE TABLE IF NOT EXISTS product_images (
+  product_id TEXT PRIMARY KEY REFERENCES admin_products(id) ON DELETE CASCADE,
+  content_type TEXT NOT NULL CHECK (content_type IN ('image/png', 'image/jpeg', 'image/webp')),
+  image BYTEA NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS app_migrations (
+  name TEXT PRIMARY KEY,
+  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+DO $$
+BEGIN
+  INSERT INTO app_migrations (name) VALUES ('initial-public-catalogue') ON CONFLICT DO NOTHING;
+  IF FOUND AND NOT EXISTS (SELECT 1 FROM admin_products) THEN
+    INSERT INTO admin_products (id,name,category,sku,price,cost,finished_stock,status) VALUES
+      ('curry-leaf-thokku','Curry Leaf Thokku','Thokku','YAA-001',249,0,0,'Active'),
+      ('honey-nuts','Honey Nuts','Honey & nuts','YAA-002',399,0,0,'Active'),
+      ('health-mix-powder','Health Mix Powder','Health mixes','YAA-003',349,0,0,'Active'),
+      ('immunity-mix','Immunity Mix','Health mixes','YAA-004',299,0,0,'Active'),
+      ('traditional-masala-powders','Traditional Masala Powders','Masala','YAA-005',199,0,0,'Active');
+  END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS admin_orders (
   id TEXT PRIMARY KEY,
@@ -91,6 +122,8 @@ CREATE TABLE IF NOT EXISTS whatsapp_outbox (
 );
 
 ALTER TABLE admin_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_images ENABLE ROW LEVEL SECURITY;
+ALTER TABLE app_migrations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_orders ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_expenses ENABLE ROW LEVEL SECURITY;

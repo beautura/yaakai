@@ -3,6 +3,7 @@ export type Product = {
   name: string;
   category: string;
   description: string;
+  ingredients?: string;
   image: string;
   imageAlt: string;
   featured: boolean;
@@ -17,4 +18,4 @@ export const products: Product[] = [
   { slug: "traditional-masala-powders", name: "Traditional Masala Powders", category: "Masala", description: "A touch of traditional flavour for your everyday cooking.", image: "/images/yaakai/08-traditional-chilli-powder.jpg", imageAlt: "Traditional chilli powder in a wooden bowl", featured: true, variants: [{ weight: "100 g", price: 199 }, { weight: "250 g", price: 399 }] },
 ];
 
-export const formatPrice = (price: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 }).format(price);
+export const formatPrice = (price: number) => new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(price);

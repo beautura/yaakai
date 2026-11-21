@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { products } from "@/lib/products";
 import { inTransaction } from "@/lib/postgres";
 import { contactPhone } from "@/lib/site-info";
 import { wakeWhatsApp } from "@/lib/whatsapp";
 import { formatOrderNumber } from "@/lib/order-number";
+import { mapAdminProduct, productColumns } from "@/lib/product-data";
 
 export const runtime = "nodejs";
 
@@ -28,16 +28,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Please check your details, Indian phone number and PIN code." }, { status: 400 });
   }
 
-  const lines: string[] = [];
+  const items = body.items;
+  if (!items.every((item) => item && typeof item === "object" && typeof item.slug === "string" && /^[a-zA-Z0-9-]{1,100}$/.test(item.slug) && typeof item.weight === "string" && item.weight.length <= 60 && Number.isInteger(item.quantity) && item.quantity >= 1 && item.quantity <= 20 && (item.expectedPrice === undefined || (typeof item.expectedPrice === "number" && Number.isFinite(item.expectedPrice) && item.expectedPrice >= 0)))) return NextResponse.json({ error: "Invalid cart." }, { status: 400 });
   let total = 0;
-  for (const item of body.items) {
-    if (!item || typeof item !== "object" || typeof item.slug !== "string" || typeof item.weight !== "string" || !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 20) return NextResponse.json({ error: "Invalid cart." }, { status: 400 });
-    const product = products.find((entry) => entry.slug === item.slug);
-    const variant = product?.variants.find((entry) => entry.weight === item.weight);
-    if (!product || !variant) return NextResponse.json({ error: "A product in your cart is no longer available." }, { status: 400 });
-    total += variant.price * item.quantity;
-    lines.push(`${product.name} (${variant.weight}) x ${item.quantity}`);
-  }
   try {
     let storePhone = contactPhone;
     let orderNumber = "";
@@ -54,7 +47,22 @@ export async function POST(request: NextRequest) {
       }
       const recent = await client.query("SELECT COUNT(*)::int AS count FROM admin_orders WHERE phone=$1 AND created_at > NOW() - INTERVAL '10 minutes'", [phone]);
       if (recent.rows[0].count >= 3) return "limited";
-      const inserted = await client.query("INSERT INTO admin_orders (id,customer_name,email,phone,ordered_on,items,total,cost,status,payment_status,delivery_address) VALUES ($1,$2,$3,$4,CURRENT_DATE,$5::jsonb,$6,0,'New','Awaiting payment',$7::jsonb) RETURNING order_number", [id, name, email, phone, JSON.stringify(lines), total, JSON.stringify(address)]);
+      const result = await client.query(`SELECT ${productColumns} FROM admin_products WHERE id=ANY($1::text[]) AND status='Active' FOR SHARE`, [items.map((item) => item.slug)]);
+      const available = new Map(result.rows.map((row) => { const product = mapAdminProduct(row); return [product.id, product]; }));
+      const lines: string[] = [];
+      let totalCents = 0;
+      let costCents = 0;
+      for (const item of items) {
+        const product = available.get(item.slug);
+        const variant = product?.variants?.find((entry) => entry.weight === item.weight);
+        if (!product || !variant) return "unavailable";
+        if (item.expectedPrice !== undefined && Math.round(item.expectedPrice * 100) !== Math.round(variant.price * 100)) return "priceChanged";
+        totalCents += Math.round(variant.price * 100) * item.quantity;
+        costCents += Math.round(product.cost * 100) * item.quantity;
+        lines.push(`${product.name} (${variant.weight}) x ${item.quantity}`);
+      }
+      total = totalCents / 100;
+      const inserted = await client.query("INSERT INTO admin_orders (id,customer_name,email,phone,ordered_on,items,total,cost,status,payment_status,delivery_address) VALUES ($1,$2,$3,$4,CURRENT_DATE,$5::jsonb,$6,$7,'New','Awaiting payment',$8::jsonb) RETURNING order_number", [id, name, email, phone, JSON.stringify(lines), total, costCents / 100, JSON.stringify(address)]);
       orderNumber = formatOrderNumber(String(inserted.rows[0].order_number));
       const message = `*YAAKAI | ORDER CONFIRMATION*\n\nVanakkam ${name.replace(/[\r\n]+/g, " ")},\nThank you for choosing Yaakai! Your order has been received.\n\n*Order ${orderNumber}*\n${lines.map((line) => `- ${line}`).join("\n")}\n\n*Subtotal: INR ${total.toLocaleString("en-IN")}*\nPayment: Awaiting payment\n\n*What's next?*\nPlease contact ${storePhone} for payment details. Delivery charges will be confirmed separately.\n\nWith care,\n*Team Yaakai*`;
       await client.query("INSERT INTO whatsapp_outbox (order_id,phone,message) VALUES ($1,$2,$3)", [id, phone, message]);
@@ -62,6 +70,8 @@ export async function POST(request: NextRequest) {
     });
     if (result === "conflict") return NextResponse.json({ error: "Order could not be submitted. Please refresh and try again." }, { status: 409 });
     if (result === "limited") return NextResponse.json({ error: "Too many orders from this number. Please try again later." }, { status: 429 });
+    if (result === "unavailable") return NextResponse.json({ error: "A product in your cart is no longer available. Please refresh your cart." }, { status: 409 });
+    if (result === "priceChanged") return NextResponse.json({ error: "A product price has changed. Please refresh your cart before ordering." }, { status: 409 });
     void wakeWhatsApp().catch(() => { console.error("Could not start WhatsApp delivery."); });
     return NextResponse.json({ id, orderNumber, total, contactPhone: storePhone, status: "Awaiting payment" }, { status: result === "created" ? 201 : 200 });
   } catch (error) {

@@ -3,12 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProductCard } from "@/components/product-card";
 import { ProductDetail } from "@/components/product-detail";
-import { products } from "@/lib/products";
+import { getPublicProducts } from "@/lib/public-products";
 
-export function generateStaticParams() { return products.map(product => ({ slug: product.slug })); }
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> { const { slug } = await params; const product = products.find(item => item.slug === slug); return { title: product?.name || "Product", description: product?.description }; }
+export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> { const { slug } = await params; const products = await getPublicProducts(); const product = products.find(item => item.slug === slug); return { title: product?.name || "Product", description: product?.description }; }
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
+  const products = await getPublicProducts();
   const product = products.find(item => item.slug === slug);
   if (!product) notFound();
   const related = products.filter(item => item.slug !== slug).slice(0, 4);

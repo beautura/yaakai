@@ -12,6 +12,8 @@ For local development, copy `.env.example` to `.env.local` and set `DATABASE_URL
 
 The admin API verifies credentials on the server and uses a signed, HTTP-only, SameSite=Strict cookie. The configured `ADMIN_EMAIL` and `ADMIN_PASSWORD` remain the initial administrator login. In Admin Settings, an administrator can create username/password accounts with the same full permissions. Passwords are stored as salted hashes; removing a user or changing their password invalidates their sessions. Sign-in attempt limits are process-local and reset when the service restarts. `DATABASE_URL` must use SSL. The Stock section manages raw materials and store supplies; finished-product stock is managed separately in Products. `/api/health` checks the database and is used by Render before routing traffic.
 
+Dashboard, Orders, Expenses and Customers share a reporting-period selector. Order and expense dates are filtered inclusively; stock figures reflect current stock rather than a historical snapshot.
+
 ## Deploy to Render
 
 The repository root contains `render.yaml`. The Blueprint uses a free Node web service in Singapore, runs `npm ci --include=dev && npm run build`, starts with `npm start`, and checks `/api/health`. Change the Render region in `render.yaml` to match your Supabase project region before deployment. Free services can sleep when idle and take time to wake up.
@@ -25,9 +27,9 @@ After the deploy is healthy, open the Render service URL at `/admin` and sign in
 
 ## Before Taking Orders
 
-Back up Supabase and run the complete `db/schema.sql` in the Supabase SQL Editor before deploying this update; it adds the admin users table and enables row-level security. In Admin Settings, enter the store phone, upload a payment QR, and connect WhatsApp by scanning the pairing QR with Linked Devices. Keep `ADMIN_SESSION_SECRET` stable: changing it requires pairing WhatsApp again.
+Back up Supabase and run the complete `db/schema.sql` in the Supabase SQL Editor before deploying this update; it adds public product details and images and enables row-level security. On the first catalogue migration only, the original starter products are added if the admin catalogue is empty; an existing catalogue is left unchanged. In Admin Settings, enter the store phone, upload a payment QR, and connect WhatsApp by scanning the pairing QR with Linked Devices. Keep `ADMIN_SESSION_SECRET` stable: changing it requires pairing WhatsApp again.
 
-Checkout records orders as awaiting payment; it does not collect or verify payment. The store must confirm payment and update order/payment statuses in Admin. Checkout prices are defined in `lib/products.ts`; manual orders use active products and their prices and costs from Admin Products. Manual orders do not send a WhatsApp confirmation automatically. Delivery charges and tax are not applied, and stock is not automatically deducted. Confirm prices, costs, and inventory before taking orders.
+Checkout records orders as awaiting payment; it does not collect or verify payment. The store must confirm payment and update order/payment statuses in Admin. Active products, descriptions, ingredients, weights, prices and uploaded images are managed in Admin Products and shown on the storefront. Checkout validates prices against the database. Manual orders use the first product price and cost and do not send a WhatsApp confirmation automatically. Delivery charges and tax are not applied, and stock is not automatically deducted. Confirm prices, costs, and inventory before taking orders.
 
 Baileys is an unofficial WhatsApp integration and can stop working or lead to account restrictions. Confirmations are queued in PostgreSQL and retried while connected, but free Render services sleep and can restart, so messages may be delayed or duplicated; delivery is not guaranteed. Test with your own phone before accepting orders. Use a single app instance for WhatsApp, and back up Supabase before launch.
 
@@ -51,7 +53,7 @@ Default contact details are set to 226, Gandhi Road, T.R.Pattinam, Karaikal, Pud
 ## Before Launch
 
 - Supplied Yaakai photographs are installed in `public/images/yaakai/` and used across the hero, product cards, story, and section banners.
-- Confirm the sample weights and prices in `lib/products.ts`, then add verified ingredient lists and any further product variants.
+- Confirm the starter weights and prices in Admin Products, then add verified ingredients and any further product variants.
 - Connect a real newsletter provider, shipping calculation, and payment gateway if needed.
 - Verify business claims, legal policies, contact information, and image usage rights before publishing.
 

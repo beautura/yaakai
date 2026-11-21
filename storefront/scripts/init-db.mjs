@@ -13,16 +13,6 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 try {
   const schema = await readFile(new URL("../db/schema.sql", import.meta.url), "utf8");
   await pool.query(schema);
-  const catalogue = [
-    ["curry-leaf-thokku", "Curry Leaf Thokku", "Thokku", "YAA-001", 249, 0],
-    ["honey-nuts", "Honey Nuts", "Honey & nuts", "YAA-002", 399, 0],
-    ["health-mix-powder", "Health Mix Powder", "Health mixes", "YAA-003", 349, 0],
-    ["immunity-mix", "Immunity Mix", "Health mixes", "YAA-004", 299, 0],
-    ["traditional-masala-powders", "Traditional Masala Powders", "Masala", "YAA-005", 199, 0],
-  ];
-  for (const [id, name, category, sku, price, cost] of catalogue) {
-    await pool.query("INSERT INTO admin_products (id,name,category,sku,price,cost,finished_stock,status) VALUES ($1,$2,$3,$4,$5,$6,0,'Active') ON CONFLICT (id) DO NOTHING", [id, name, category, sku, price, cost]);
-  }
   const inventory = [
     ["raw-curry-leaves", "Fresh curry leaves", "RAW-001", "Raw material", "kg", 0, 0, 0, ""],
     ["raw-groundnuts", "Groundnuts", "RAW-002", "Raw material", "kg", 0, 0, 0, ""],

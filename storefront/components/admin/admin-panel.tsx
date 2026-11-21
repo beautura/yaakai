@@ -13,7 +13,6 @@ import {
   Boxes,
   CalendarDays,
   Check,
-  ChevronDown,
   CircleDollarSign,
   Eye,
   EyeOff,
@@ -39,6 +38,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/site-shell";
 import { indiaStates } from "@/lib/india-states";
+import { getDateRange, isWithinDateRange, localDateValue, type PeriodMode } from "@/lib/date-range";
 import {
   formatAdminPrice,
   orderStatuses,
@@ -80,8 +80,7 @@ const navigation: { id: View; label: string; icon: typeof LayoutDashboard }[] =
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-const today = () => new Date().toISOString().slice(0, 10);
-const monthKey = (date: string) => date.slice(0, 7);
+const today = () => localDateValue(new Date());
 const titleFor: Record<View, string> = {
   dashboard: "Dashboard",
   orders: "Orders",
@@ -276,8 +275,12 @@ function ProductEditor({
 }: {
   product: AdminProduct | null;
   onClose: () => void;
-  onSave: (draft: ProductDraft) => void;
+  onSave: (draft: ProductDraft, image: File | null, removeImage: boolean) => Promise<string | null>;
 }) {
+  const [id] = useState(() => product?.id || `yaakai-${crypto.randomUUID()}`);
+  const [variants, setVariants] = useState(() => (product?.variants?.length ? product.variants : [{ weight: "Standard", price: product?.price ?? 0 }]).map((variant) => ({ ...variant, key: crypto.randomUUID() })));
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   return (
     <div
       className="admin-modal-backdrop"
@@ -308,19 +311,31 @@ function ProductEditor({
           </button>
         </div>
         <form
-          onSubmit={(event) => {
+          onSubmit={async (event) => {
             event.preventDefault();
+            if (busy) return;
             const fields = new FormData(event.currentTarget);
-            onSave({
-              id: product?.id,
+            const file = fields.get("image");
+            setBusy(true);
+            setError("");
+            const result = await onSave({
+              id,
               name: String(fields.get("name")),
               category: String(fields.get("category")),
               sku: String(fields.get("sku")),
-              price: Number(fields.get("price")),
+              price: variants[0]?.price ?? 0,
               cost: Number(fields.get("cost")),
               stock: Number(fields.get("stock")),
               status: String(fields.get("status")) as AdminProduct["status"],
-            });
+              description: String(fields.get("description")),
+              ingredients: String(fields.get("ingredients")),
+              imagePath: product?.imagePath || "",
+              imageAlt: String(fields.get("imageAlt")),
+              featured: fields.has("featured"),
+              variants: variants.map(({ weight, price }) => ({ weight, price })),
+            }, file instanceof File && file.size ? file : null, fields.has("removeImage"));
+            if (result) setError(result);
+            setBusy(false);
           }}
         >
           <div className="admin-form-grid">
@@ -341,23 +356,12 @@ function ProductEditor({
               <input name="sku" defaultValue={product?.sku} required />
             </label>
             <label>
-              Selling price
-              <input
-                name="price"
-                type="number"
-                min="0"
-                step="1"
-                defaultValue={product?.price}
-                required
-              />
-            </label>
-            <label>
               Unit cost
               <input
                 name="cost"
                 type="number"
                 min="0"
-                step="1"
+                step="0.01"
                 defaultValue={product?.cost}
                 required
               />
@@ -380,13 +384,22 @@ function ProductEditor({
                 <option>Draft</option>
               </select>
             </label>
+            <label className="form-wide">Description<textarea name="description" rows={3} maxLength={5000} defaultValue={product?.description || ""} /></label>
+            <label className="form-wide">Ingredients<textarea name="ingredients" rows={3} maxLength={5000} defaultValue={product?.ingredients || ""} /></label>
+            <label className="form-wide">Image description<input name="imageAlt" maxLength={200} defaultValue={product?.imageAlt || ""} /></label>
+            {product?.imagePath && <div className="form-wide product-image-preview"><Image src={product.imagePath} alt={product.imageAlt || product.name} width={110} height={90} unoptimized /></div>}
+            <label className="form-wide">Product image (PNG, JPEG or WebP, up to 5 MB)<input name="image" type="file" accept="image/png,image/jpeg,image/webp" /></label>
+            {product?.imagePath && <label className="form-wide product-checkbox"><input name="removeImage" type="checkbox" /> Remove current image</label>}
+            <label className="form-wide product-checkbox"><input name="featured" type="checkbox" defaultChecked={product?.featured || false} /> Feature on the homepage</label>
+            <div className="form-wide product-variants"><strong>Weights and prices</strong>{variants.map((variant, index) => <div className="product-variant" key={variant.key}><label>Weight {index + 1}<input maxLength={60} value={variant.weight} onChange={(event) => setVariants((current) => current.map((item) => item.key === variant.key ? { ...item, weight: event.target.value } : item))} required /></label><label>Price<input type="number" min="0" max="1000000000" step="0.01" value={variant.price} onChange={(event) => setVariants((current) => current.map((item) => item.key === variant.key ? { ...item, price: Number(event.target.value) } : item))} required /></label><button className="icon-action danger-action" type="button" title="Remove weight" aria-label={`Remove weight ${index + 1}`} disabled={variants.length === 1} onClick={() => setVariants((current) => current.filter((item) => item.key !== variant.key))}><Trash2 size={15} /></button></div>)}<button className="admin-link-button" type="button" disabled={variants.length >= 20} onClick={() => setVariants((current) => [...current, { key: crypto.randomUUID(), weight: "", price: 0 }])}><Plus size={15} /> Add weight</button></div>
           </div>
+          {error && <p className="admin-form-error" role="alert">{error}</p>}
           <div className="modal-actions">
-            <button type="button" className="admin-secondary" onClick={onClose}>
+            <button type="button" className="admin-secondary" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="admin-primary">
-              <Check size={15} /> Save product
+            <button type="submit" className="admin-primary" disabled={busy}>
+              <Check size={15} /> {busy ? "Saving..." : "Save product"}
             </button>
           </div>
         </form>
@@ -807,6 +820,11 @@ export function AdminPanel() {
   const [authenticated, setAuthenticated] = useState(false);
   const [checkingSession, setCheckingSession] = useState(true);
   const [view, setView] = useState<View>("dashboard");
+  const [periodMode, setPeriodMode] = useState<PeriodMode>("all");
+  const [periodDay, setPeriodDay] = useState(() => localDateValue(new Date()));
+  const [periodMonth, setPeriodMonth] = useState(() => localDateValue(new Date()).slice(0, 7));
+  const [periodFrom, setPeriodFrom] = useState(() => localDateValue(new Date()).slice(0, 8) + "01");
+  const [periodTo, setPeriodTo] = useState(() => localDateValue(new Date()));
   const [query, setQuery] = useState("");
   const [mobileSidebar, setMobileSidebar] = useState(false);
   const [productEditor, setProductEditor] = useState<
@@ -884,31 +902,20 @@ export function AdminPanel() {
     setView("dashboard");
   }
 
-  const currentMonth = new Date().toISOString().slice(0, 7);
-  const previousMonthDate = new Date();
-  previousMonthDate.setMonth(previousMonthDate.getMonth() - 1);
-  const previousMonth = previousMonthDate.toISOString().slice(0, 7);
-  const paidOrders = data.orders.filter(
+  const dateRange = getDateRange(periodMode, periodDay, periodMonth, periodFrom, periodTo, new Date());
+  const periodOrders = data.orders.filter((order) => isWithinDateRange(order.date, dateRange));
+  const periodExpenses = data.expenses.filter((expense) => isWithinDateRange(expense.date, dateRange));
+  const paidOrders = periodOrders.filter(
     (order) => order.payment === "Paid" && order.status !== "Cancelled",
   );
   const sales = paidOrders.reduce((sum, order) => sum + order.total, 0);
   const productCost = paidOrders.reduce((sum, order) => sum + order.cost, 0);
   const grossProfit = sales - productCost;
-  const expensesTotal = data.expenses.reduce(
+  const expensesTotal = periodExpenses.reduce(
     (sum, expense) => sum + expense.amount,
     0,
   );
   const netProfit = grossProfit - expensesTotal;
-  const currentSales = paidOrders
-    .filter((order) => monthKey(order.date) === currentMonth)
-    .reduce((sum, order) => sum + order.total, 0);
-  const previousSales = paidOrders
-    .filter((order) => monthKey(order.date) === previousMonth)
-    .reduce((sum, order) => sum + order.total, 0);
-  const growth =
-    previousSales === 0
-      ? 0
-      : Math.round(((currentSales - previousSales) / previousSales) * 100);
   const margin = sales === 0 ? 0 : Math.round((grossProfit / sales) * 100);
   const lowStock = data.products.filter(
     (product) => product.stock <= data.settings.lowStockThreshold,
@@ -916,10 +923,7 @@ export function AdminPanel() {
   const lowInventory = data.inventory.filter(
     (item) => item.onHand <= item.reorderLevel,
   );
-  const monthExpenses = data.expenses
-    .filter((expense) => monthKey(expense.date) === currentMonth)
-    .reduce((sum, expense) => sum + expense.amount, 0);
-  const canceledLoss = data.orders
+  const canceledLoss = periodOrders
     .filter((order) => order.status === "Cancelled")
     .reduce((sum, order) => sum + order.total, 0);
 
@@ -956,20 +960,32 @@ export function AdminPanel() {
     }
   }
 
-  async function saveProduct(draft: ProductDraft) {
-    const id = draft.id || `yaakai-${Date.now()}`;
-    const saved = await persist(
-      (current) => ({
-        ...current,
-        products: draft.id
-          ? current.products.map((product) =>
-              product.id === draft.id ? { ...draft, id } : product,
-            )
-          : [{ ...draft, id }, ...current.products],
-      }),
-      draft.id ? "Product changes saved." : "Product added to catalogue.",
-    );
-    if (saved) setProductEditor(undefined);
+  async function saveProduct(draft: ProductDraft, image: File | null, removeImage: boolean) {
+    const form = new FormData();
+    form.set("product", JSON.stringify(draft));
+    if (image) form.set("image", image);
+    if (removeImage) form.set("removeImage", "true");
+    try {
+      const response = await fetch("/api/admin/products", { method: "PUT", body: form });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) return result.error || "Could not save the product.";
+      await loadAdminData();
+      window.dispatchEvent(new Event("yaakai:products-changed"));
+      setProductEditor(undefined);
+      setNotice("Product saved.");
+      return null;
+    } catch { return "Could not save or refresh the product. Please try again."; }
+  }
+
+  async function deleteProduct(product: AdminProduct) {
+    if (!window.confirm(`Remove ${product.name} from the catalogue?`)) return;
+    try {
+      const response = await fetch("/api/admin/products", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: product.id }) });
+      if (!response.ok) throw new Error("Could not remove the product.");
+      await loadAdminData();
+      window.dispatchEvent(new Event("yaakai:products-changed"));
+      setNotice(`${product.name} removed from catalogue.`);
+    } catch { setNotice("Could not remove the product. Please retry."); }
   }
 
   async function saveInventory(draft: InventoryDraft) {
@@ -1046,7 +1062,7 @@ export function AdminPanel() {
     );
   if (!authenticated) return <LoginScreen onLogin={login} />;
 
-  const filteredOrders = data.orders.filter((order) =>
+  const filteredOrders = periodOrders.filter((order) =>
     `${order.orderNumber} ${order.id} ${order.customer} ${order.email} ${order.status}`
       .toLowerCase()
       .includes(query.toLowerCase()),
@@ -1061,22 +1077,20 @@ export function AdminPanel() {
       .toLowerCase()
       .includes(query.toLowerCase()),
   );
-  const monthSeries = Array.from({ length: 6 }, (_, index) => {
-    const date = new Date();
-    date.setDate(1);
-    date.setMonth(date.getMonth() - (5 - index));
-    const key = date.toISOString().slice(0, 7);
-    return {
-      label: date.toLocaleDateString("en-IN", { month: "short" }),
-      total: paidOrders
-        .filter((order) => monthKey(order.date) === key)
-        .reduce((sum, order) => sum + order.total, 0),
-    };
-  });
+  const monthlyRevenue = new Map<string, number>();
+  for (const order of paidOrders) {
+    const key = order.date.slice(0, 7);
+    monthlyRevenue.set(key, (monthlyRevenue.get(key) || 0) + order.total);
+  }
+  const monthSeries = Array.from(monthlyRevenue.entries()).sort(([first], [second]) => first.localeCompare(second)).slice(-12).map(([key, total]) => ({
+    key,
+    label: new Date(`${key}-01T12:00:00`).toLocaleDateString("en-IN", { month: "short", year: "2-digit" }),
+    total,
+  }));
   const maximumMonth = Math.max(...monthSeries.map((month) => month.total), 1);
 
   const customers = Object.values(
-    data.orders.reduce<
+    periodOrders.reduce<
       Record<
         string,
         {
@@ -1089,7 +1103,8 @@ export function AdminPanel() {
         }
       >
     >((result, order) => {
-      const current = result[order.email] || {
+      const customerKey = (order.email || order.phone || order.customer || order.id).trim().toLowerCase();
+      const current = result[customerKey] || {
         name: order.customer,
         email: order.email,
         phone: order.phone,
@@ -1103,7 +1118,7 @@ export function AdminPanel() {
           ? order.total
           : 0;
       if (order.date > current.lastOrder) current.lastOrder = order.date;
-      result[order.email] = current;
+      result[customerKey] = current;
       return result;
     }, {}),
   ).filter((customer) =>
@@ -1200,6 +1215,13 @@ export function AdminPanel() {
               })}
             </div>
           </div>
+          {["dashboard", "orders", "expenses", "customers"].includes(view) && <div className="admin-period-filter" role="group" aria-label="Reporting period">
+            <label>Period<select aria-label="Period" value={periodMode} onChange={(event) => setPeriodMode(event.target.value as PeriodMode)}><option value="all">All time</option><option value="today">Today</option><option value="this-month">This month</option><option value="last-month">Last month</option><option value="this-year">This year</option><option value="date">Select date</option><option value="month">Select month</option><option value="custom">Custom range</option></select></label>
+            {periodMode === "date" && <label>Date<input aria-label="Date" type="date" value={periodDay} onChange={(event) => setPeriodDay(event.target.value)} /></label>}
+            {periodMode === "month" && <label>Month<input aria-label="Month" type="month" value={periodMonth} onChange={(event) => setPeriodMonth(event.target.value)} /></label>}
+            {periodMode === "custom" && <><label>From<input aria-label="From" type="date" value={periodFrom} onChange={(event) => setPeriodFrom(event.target.value)} /></label><label>To<input aria-label="To" type="date" value={periodTo} onChange={(event) => setPeriodTo(event.target.value)} /></label></>}
+            {!dateRange.valid && <p role="alert">Select a valid date range.</p>}
+          </div>}
           {!ready && (
             <p className="admin-loading">Loading PostgreSQL data…</p>
           )}
@@ -1217,10 +1239,8 @@ export function AdminPanel() {
                 <Metric
                   label="Gross sales"
                   value={formatAdminPrice(sales)}
-                  note="Paid orders · all time"
+                  note={periodMode === "all" ? "Paid orders · all time" : "Paid orders · selected period"}
                   icon={CircleDollarSign}
-                  trend={`${growth >= 0 ? "+" : ""}${growth}% this month`}
-                  negative={growth < 0}
                 />
                 <Metric
                   label="Gross margin"
@@ -1231,14 +1251,14 @@ export function AdminPanel() {
                 <Metric
                   label={netProfit < 0 ? "Net loss" : "Net profit"}
                   value={formatAdminPrice(Math.abs(netProfit))}
-                  note={`${formatAdminPrice(monthExpenses)} expenses this month`}
+                  note={`${formatAdminPrice(expensesTotal)} expenses in period`}
                   icon={netProfit < 0 ? TrendingDown : Wallet}
                   negative={netProfit < 0}
                 />
                 <Metric
                   label="Open orders"
                   value={String(
-                    data.orders.filter(
+                    periodOrders.filter(
                       (order) =>
                         !["Delivered", "Cancelled"].includes(order.status),
                     ).length,
@@ -1252,25 +1272,21 @@ export function AdminPanel() {
                   <div className="panel-heading">
                     <div>
                       <h2>Revenue overview</h2>
-                      <p>Paid order revenue by month</p>
+                      <p>{monthlyRevenue.size > 12 ? "Most recent 12 months in the selected period" : "Paid order revenue by month"}</p>
                     </div>
-                    <span className="panel-period">
-                      Last 6 months <ChevronDown size={14} />
-                    </span>
+                    <span className="panel-period">{periodMode === "all" ? "All time" : "Selected period"}</span>
                   </div>
-                  <div
+                  {monthSeries.length ? <div
                     className="revenue-chart"
                     aria-label="Monthly revenue chart"
                   >
                     {monthSeries.map((month) => (
                       <div
                         className="chart-column"
-                        key={`${month.label}-${month.total}`}
+                        key={month.key}
                       >
-                        <span className="chart-value">
-                          {month.total
-                            ? `${Math.round(month.total / 100) / 10}k`
-                            : "—"}
+                        <span className="chart-value" title={formatAdminPrice(month.total)}>
+                          {formatAdminPrice(month.total)}
                         </span>
                         <span className="chart-track">
                           <span
@@ -1283,40 +1299,34 @@ export function AdminPanel() {
                         <span className="chart-label">{month.label}</span>
                       </div>
                     ))}
-                  </div>
+                  </div> : <p className="table-empty">No paid orders in this period.</p>}
                 </section>
                 <section className="admin-panel health-panel">
                   <div className="panel-heading">
                     <div>
                       <h2>Business health</h2>
-                      <p>Current month snapshot</p>
+                      <p>{periodMode === "all" ? "All-time snapshot" : "Selected period snapshot"}</p>
                     </div>
                   </div>
                   <div className="health-row">
                     <span>Revenue</span>
-                    <strong>{formatAdminPrice(currentSales)}</strong>
+                    <strong>{formatAdminPrice(sales)}</strong>
                   </div>
                   <div className="health-row">
                     <span>Product costs</span>
                     <strong>
-                      {formatAdminPrice(
-                        paidOrders
-                          .filter(
-                            (order) => monthKey(order.date) === currentMonth,
-                          )
-                          .reduce((sum, order) => sum + order.cost, 0),
-                      )}
+                      {formatAdminPrice(productCost)}
                     </strong>
                   </div>
                   <div className="health-row">
                     <span>Operating expenses</span>
-                    <strong>{formatAdminPrice(monthExpenses)}</strong>
+                    <strong>{formatAdminPrice(expensesTotal)}</strong>
                   </div>
                   <div className="health-row health-total">
                     <span>
                       {netProfit < 0
-                        ? "Net loss · all time"
-                        : "Net profit · all time"}
+                        ? "Net loss"
+                        : "Net profit"}
                     </span>
                     <strong
                       className={netProfit < 0 ? "loss-text" : "profit-text"}
@@ -1344,7 +1354,7 @@ export function AdminPanel() {
                   </button>
                 </div>
                 <OrdersTable
-                  orders={data.orders.slice(0, 4)}
+                  orders={periodOrders.slice(0, 4)}
                   onStatus={updateOrderStatus}
                   onOpen={setSelectedOrder}
                 />
@@ -1388,8 +1398,8 @@ export function AdminPanel() {
             <section className="admin-view">
               <div className="admin-toolbar">
                 <div className="toolbar-stat">
-                  <strong>{data.orders.length}</strong>
-                  <span>orders in PostgreSQL</span>
+                  <strong>{periodOrders.length}</strong>
+                  <span>orders in period</span>
                 </div>
                 <div className="admin-toolbar-actions"><button className="admin-secondary" type="button" onClick={() => { void loadAdminData().catch(() => setNotice("Could not refresh orders.")); }}><RefreshCw size={14} /> Refresh orders</button><button className="admin-primary" type="button" onClick={() => setManualOrder(true)}><Plus size={14} /> Create order</button></div>
               </div>
@@ -1521,14 +1531,7 @@ export function AdminPanel() {
                                 className="icon-action danger-action"
                                 title="Delete product"
                                 aria-label={`Delete ${product.name}`}
-                                onClick={() => {
-                                  void persist((current) => ({
-                                    ...current,
-                                    products: current.products.filter(
-                                      (item) => item.id !== product.id,
-                                    ),
-                                  }), `${product.name} removed from catalogue.`);
-                                }}
+                                onClick={() => void deleteProduct(product)}
                               >
                                 <Trash2 size={15} />
                               </button>
@@ -1686,13 +1689,13 @@ export function AdminPanel() {
                 <Metric
                   label="Recorded expenses"
                   value={formatAdminPrice(expensesTotal)}
-                  note="All entries stored in PostgreSQL"
+                  note={periodMode === "all" ? "All recorded entries" : "Selected period"}
                   icon={Receipt}
                 />
                 <Metric
-                  label="This month"
-                  value={formatAdminPrice(monthExpenses)}
-                  note="Current month expenses"
+                  label="Expense entries"
+                  value={String(periodExpenses.length)}
+                  note="Recorded in this period"
                   icon={Wallet}
                 />
               </div>
@@ -1792,7 +1795,7 @@ export function AdminPanel() {
                 <div className="panel-heading">
                   <div>
                     <h2>Expense ledger</h2>
-                    <p>{data.expenses.length} recorded entries</p>
+                    <p>{periodExpenses.length} recorded entries</p>
                   </div>
                 </div>
                 <div className="admin-table-wrap">
@@ -1808,7 +1811,7 @@ export function AdminPanel() {
                       </tr>
                     </thead>
                     <tbody>
-                      {[...data.expenses]
+                      {[...periodExpenses]
                         .sort((a, b) => b.date.localeCompare(a.date))
                         .map((expense) => (
                           <tr key={expense.id}>

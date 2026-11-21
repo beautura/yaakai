@@ -4,11 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRef, useState, type FormEvent } from "react";
 import { useCart } from "@/components/cart-provider";
-import { formatPrice, products } from "@/lib/products";
+import { formatPrice } from "@/lib/products";
 import { indiaStates } from "@/lib/india-states";
 
 export function CheckoutPage() {
-  const { items, subtotal, ready, clear } = useCart();
+  const { items, products, subtotal, ready, clear, catalogueError, unavailableCount } = useCart();
   const orderId = useRef<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -17,7 +17,7 @@ export function CheckoutPage() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy) return;
+    if (busy || !ready || unavailableCount) return;
     setBusy(true);
     setError("");
     orderId.current ??= crypto.randomUUID();
@@ -27,7 +27,7 @@ export function CheckoutPage() {
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...details, id: orderId.current, items, whatsappConsent: form.has("whatsappConsent") }),
+        body: JSON.stringify({ ...details, id: orderId.current, items: items.map((item) => ({ ...item, expectedPrice: products.find((product) => product.slug === item.slug)?.variants.find((variant) => variant.weight === item.weight)?.price })), whatsappConsent: form.has("whatsappConsent") }),
       });
       const result = await response.json() as { orderNumber?: string; total?: number; contactPhone?: string; error?: string };
       if (!response.ok || !result.orderNumber || typeof result.total !== "number") throw new Error(result.error || "Could not place your order.");
@@ -47,7 +47,7 @@ export function CheckoutPage() {
     <main className="container commerce-page">
       <p className="eyebrow">YOUR YAAKAI SELECTION</p>
       <h1>Checkout</h1>
-      {!ready ? <p>Loading your cart...</p> : items.length === 0 ? <div className="empty-cart"><h2>Your cart is empty.</h2><Link className="button" href="/products">Explore Products</Link></div> : (
+      {catalogueError ? <p role="alert">{catalogueError}</p> : !ready ? <p>Loading your cart...</p> : items.length === 0 ? <div className="empty-cart"><h2>Your cart is empty.</h2><Link className="button" href="/products">Explore Products</Link></div> : (
         <div className="commerce-grid checkout-grid">
           <form className="checkout-form" onSubmit={submit}>
             <h2>Customer Details</h2>
@@ -67,8 +67,9 @@ export function CheckoutPage() {
             </div>
             <label className="checkout-consent"><input name="whatsappConsent" type="checkbox" required /> I agree to receive this order confirmation on WhatsApp.</label>
             <p className="checkout-message">Payment is not collected at checkout. Contact the store for payment and delivery details.</p>
+            {unavailableCount > 0 && <p className="checkout-error" role="alert">Some products are no longer available. <Link href="/cart">Update your cart</Link> before ordering.</p>}
             {error && <p className="checkout-error" role="alert">{error}</p>}
-            <button className="button full-button" type="submit" disabled={busy}>{busy ? "Placing order..." : "Place order"}</button>
+            <button className="button full-button" type="submit" disabled={busy || unavailableCount > 0}>{busy ? "Placing order..." : "Place order"}</button>
           </form>
           <aside className="order-summary"><h2>Order Summary</h2>{items.map((item) => { const product = products.find((entry) => entry.slug === item.slug); const variant = product?.variants.find((entry) => entry.weight === item.weight); if (!product || !variant) return null; return <div className="summary-line" key={`${item.slug}-${item.weight}`}><span>{product.name}<small>{item.weight} x {item.quantity}</small></span><strong>{formatPrice(variant.price * item.quantity)}</strong></div>; })}<div className="summary-line summary-total"><span>Subtotal</span><strong>{formatPrice(subtotal)}</strong></div><p>Delivery charges will be confirmed by the store.</p><Link className="continue-link" href="/cart">Return to cart</Link></aside>
         </div>
