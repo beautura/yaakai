@@ -14,9 +14,12 @@ The admin API verifies credentials on the server and uses a signed, HTTP-only, S
 
 ## Deploy to Render
 
-The repository root contains `render.yaml`. Push the repository to GitHub/GitLab/Bitbucket, then in Render choose **New → Blueprint** and select that repository. The Blueprint creates a paid Node web service in Singapore, runs `npm ci --include=dev && npm run build`, executes `npm run db:setup` before each deploy, starts with `npm start`, and waits for `/api/health`. Change the Render region in `render.yaml` to match your Supabase project region before deployment.
+The repository root contains `render.yaml`. The Blueprint uses a free Node web service in Singapore, runs `npm ci --include=dev && npm run build`, starts with `npm start`, and checks `/api/health`. Change the Render region in `render.yaml` to match your Supabase project region before deployment. Free services can sleep when idle and take time to wake up.
 
-During Blueprint setup, provide `DATABASE_URL` from Supabase's Session pooler, `ADMIN_EMAIL`, and a strong `ADMIN_PASSWORD`. Render generates `ADMIN_SESSION_SECRET`. Keep all three admin/database values private. The paid Render plan is required because Render only supports `preDeployCommand` for paid web services; this runs the idempotent schema setup before traffic is switched to each deploy.
+1. Create a Supabase project and copy its Session pooler connection string with `sslmode=require`. Replace the password placeholder; URL-encode special characters in the password.
+2. From the repository root, run `npm --prefix storefront ci --include=dev`. Copy `storefront/.env.example` to `storefront/.env.local`, then privately set `DATABASE_URL` and your admin credentials there. Do not commit this file or share its secrets.
+3. Run `npm --prefix storefront run db:setup` locally and confirm it succeeds before deploying. Render's free plan does not run pre-deploy commands; repeat the appropriate database setup or migration manually before deploying future schema changes.
+4. Push the repository to GitHub/GitLab/Bitbucket, then in Render choose **New → Blueprint** and select it. Provide the same `DATABASE_URL`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` during setup. Render generates `ADMIN_SESSION_SECRET`.
 
 After the deploy is healthy, open the Render service URL at `/admin`, sign in with the configured admin email and password, then confirm **POSTGRESQL** in the sidebar. If health checks fail, verify the Supabase session-pooler host, username, password, region, and `sslmode=require` in `DATABASE_URL`.
 

@@ -5,9 +5,8 @@ services:
     rootDir: storefront
     # Match this to the Supabase project region when creating the service.
     region: singapore
-    plan: 0.5c-512mb
+    plan: free
     buildCommand: npm ci --include=dev && npm run build
-    preDeployCommand: npm run db:setup
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
