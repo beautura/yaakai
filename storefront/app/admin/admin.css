@@ -37,6 +37,7 @@
 .metric-heading{display:flex;align-items:center;justify-content:space-between;color:#73776b;font-size:11px}
 .metric-icon{width:31px;height:31px;display:grid;place-items:center;border-radius:50%;background:#f1f3e9;color:var(--admin-forest)}
 .metric-value{display:block;margin:10px 0 7px;color:var(--admin-ink);font:600 25px/1.1 'Playfair Display',serif}
+.admin-root .metric-value{font-family:'Poppins',sans-serif;font-variant-numeric:tabular-nums;font-weight:600}
 .metric-foot{min-height:17px;display:flex;align-items:center;gap:8px;color:#85887e;font-size:9px}
 .metric-trend{display:inline-flex;align-items:center;gap:2px;color:#3d783c;font-weight:600}.metric-trend.negative{color:#a44936}
 .admin-dashboard-grid{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(280px,1fr);gap:14px}

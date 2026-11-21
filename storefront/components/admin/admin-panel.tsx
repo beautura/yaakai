@@ -611,8 +611,8 @@ function OrderDetails({
           </select>
         </label>
         <p className="preview-note">
-          Demo order only. Shipping, payment, and customer notifications are not
-          connected.
+          Payment processing, shipping labels, and customer notifications are
+          not connected to this order record.
         </p>
       </section>
     </div>
@@ -1519,7 +1519,7 @@ export function AdminPanel() {
                 <Metric
                   label="Recorded expenses"
                   value={formatAdminPrice(expensesTotal)}
-                  note="All entries in this preview"
+                  note="All entries stored in PostgreSQL"
                   icon={Receipt}
                 />
                 <Metric
@@ -1657,12 +1657,12 @@ export function AdminPanel() {
                                 className="icon-action danger-action"
                                 aria-label={`Delete ${expense.title}`}
                                 onClick={() =>
-                                  updateAdminData((current) => ({
+                                  void persist((current) => ({
                                     ...current,
                                     expenses: current.expenses.filter(
                                       (item) => item.id !== expense.id,
                                     ),
-                                  }))
+                                  }), `${expense.title} removed`)
                                 }
                               >
                                 <Trash2 size={15} />
@@ -1710,7 +1710,7 @@ export function AdminPanel() {
                 <div className="panel-heading">
                   <div>
                     <h2>Customer directory</h2>
-                    <p>Customer details are derived from preview orders.</p>
+                    <p>Customer records are derived from stored PostgreSQL orders.</p>
                   </div>
                   <span className="panel-period">
                     {customers.length} customers
@@ -1764,8 +1764,7 @@ export function AdminPanel() {
                 </div>
               </section>
               <p className="preview-note">
-                Customer management uses sample order details until a secure
-                order database is connected.
+                Customer entries are derived from orders recorded at checkout.
               </p>
             </section>
           )}
@@ -1779,10 +1778,7 @@ export function AdminPanel() {
                 <div className="panel-heading">
                   <div>
                     <h2>Store profile</h2>
-                    <p>
-                      Contact details and inventory controls for the preview
-                      store.
-                    </p>
+                    <p>Contact details, stock alerts, and store configuration.</p>
                   </div>
                   <button className="admin-primary" type="submit">
                     <Check size={15} />
@@ -1843,42 +1839,24 @@ export function AdminPanel() {
                   </label>
                 </div>
                 <p className="settings-footnote">
-                  These settings save to this browser only in preview mode. Tax
-                  is not applied to checkout.
+                  These settings are stored in PostgreSQL. The current checkout does not apply tax.
                 </p>
               </form>
               <section className="admin-panel settings-security">
                 <div className="panel-heading">
                   <div>
                     <h2>Access & data</h2>
-                    <p>Preview configuration</p>
+                    <p>Server-side configuration</p>
                   </div>
                 </div>
                 <div className="security-note">
                   <AlertTriangle size={18} />
                   <p>
-                    <strong>Demo authentication</strong>
+                    <strong>Signed admin session</strong>
                     <br />
-                    The login screen is a UI gate, not server-side security. Do
-                    not enter real customer information until authentication and
-                    database storage are connected.
+                    Admin credentials and a session-signing secret are read only by the server. Keep them out of public environment variables.
                   </p>
                 </div>
-                <button
-                  className="admin-secondary"
-                  onClick={() => {
-                    if (
-                      window.confirm(
-                        "Reset products, orders, stock, expenses, and settings to sample data?",
-                      )
-                    ) {
-                      updateAdminData(() => initialAdminData);
-                      setNotice("Preview data reset to sample values.");
-                    }
-                  }}
-                >
-                  Reset preview data
-                </button>
               </section>
             </section>
           )}
@@ -1897,6 +1875,14 @@ export function AdminPanel() {
           product={productEditor}
           onClose={() => setProductEditor(undefined)}
           onSave={saveProduct}
+        />
+      )}
+      {inventoryEditor !== undefined && (
+        <InventoryEditor
+          key={inventoryEditor?.id || "new-inventory-item"}
+          item={inventoryEditor}
+          onClose={() => setInventoryEditor(undefined)}
+          onSave={saveInventory}
         />
       )}
       {selectedOrder && (

@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: yaakai-storefront
+    runtime: node
+    rootDir: storefront
+    # Match this to the Supabase project region when creating the service.
+    region: singapore
+    plan: 0.5c-512mb
+    buildCommand: npm ci --include=dev && npm run build
+    preDeployCommand: npm run db:setup
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: ADMIN_SESSION_SECRET
+        generateValue: true
+      - key: NEXT_PUBLIC_CONTACT_PHONE
+        value: +91 8098874435
+      - key: NEXT_PUBLIC_CONTACT_ADDRESS
+        value: 226, Gandhi Road, T.R.Pattinam, Karaikal, Puducherry. 609606.
+      - key: NEXT_PUBLIC_WHATSAPP_NUMBER
+        value: +91 8098874435

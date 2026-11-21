@@ -4,6 +4,26 @@ Next.js, TypeScript, and Tailwind CSS storefront. Run `npm install` and `npm run
 
 Home, About, and Contact share the single `/` page and are reached through in-page navigation. The product catalogue is at `/products`; product details, cart, and checkout have their own shopping routes. The legacy `/about` and `/contact` paths redirect to their homepage sections.
 
+## Supabase PostgreSQL
+
+In Supabase, create a project and use **Connect → Session pooler** to copy its connection string. Render web services can be IPv4-only; Supabase recommends the session pooler on port `5432` for a persistent backend in that case. Keep `sslmode=require` in the URL. Match the Render service's region to the Supabase project region where possible.
+
+For local development, copy `.env.example` to `.env.local` and set `DATABASE_URL`, `ADMIN_EMAIL`, and a strong `ADMIN_PASSWORD`. Set `ADMIN_SESSION_SECRET` to at least 32 random characters. Never put these secrets in `NEXT_PUBLIC_` variables or commit `.env.local`. Initialize tables and the starter catalogue/inventory with `npm --prefix storefront run db:setup`; this seeds no orders or expenses.
+
+The admin API verifies credentials on the server and uses a signed, HTTP-only, SameSite=Strict cookie. `DATABASE_URL` must use SSL. The Stock section manages raw materials and store supplies; finished-product stock is managed separately in Products. `/api/health` checks the database and is used by Render before routing traffic.
+
+## Deploy to Render
+
+The repository root contains `render.yaml`. Push the repository to GitHub/GitLab/Bitbucket, then in Render choose **New → Blueprint** and select that repository. The Blueprint creates a paid Node web service in Singapore, runs `npm ci --include=dev && npm run build`, executes `npm run db:setup` before each deploy, starts with `npm start`, and waits for `/api/health`. Change the Render region in `render.yaml` to match your Supabase project region before deployment.
+
+During Blueprint setup, provide `DATABASE_URL` from Supabase's Session pooler, `ADMIN_EMAIL`, and a strong `ADMIN_PASSWORD`. Render generates `ADMIN_SESSION_SECRET`. Keep all three admin/database values private. The paid Render plan is required because Render only supports `preDeployCommand` for paid web services; this runs the idempotent schema setup before traffic is switched to each deploy.
+
+After the deploy is healthy, open the Render service URL at `/admin`, sign in with the configured admin email and password, then confirm **POSTGRESQL** in the sidebar. If health checks fail, verify the Supabase session-pooler host, username, password, region, and `sslmode=require` in `DATABASE_URL`.
+
+## Before Taking Orders
+
+The public checkout is not yet connected to create PostgreSQL orders or process payment. The admin will show orders only after a real checkout/order endpoint is implemented. Confirm sample prices, costs, and the initial inventory quantities before using financial reports; replace the starter values in `scripts/init-db.mjs` as needed before first setup. Back up Supabase, use a custom domain, and configure transactional email/shipping/payment integrations before launch.
+
 ## Business Details
 
 Set the following optional public variables in `.env.local` and restart the server. Public variables are included in browser bundles and are embedded at build time.
@@ -28,4 +48,4 @@ Default contact details are set to 226, Gandhi Road, T.R.Pattinam, Karaikal, Pud
 - Connect a real newsletter provider, shipping calculation, order service, and payment gateway. Checkout currently collects no data and cannot place an order.
 - Verify business claims, legal policies, contact information, and image usage rights before publishing.
 
-The cart is stored in the browser's local storage. Prices are illustrative and must be validated on the server when a real checkout is implemented.
+The customer cart is stored in the browser's local storage. Prices are illustrative and must be validated on the server when a real checkout is implemented.

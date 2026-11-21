@@ -7,7 +7,18 @@ declare global {
 export function getPostgresPool() {
   const connectionString = process.env.DATABASE_URL;
   if (!connectionString) throw new Error("DATABASE_URL is not configured.");
-  globalThis.yaakaiPostgresPool ??= new Pool({ connectionString, max: 10, idleTimeoutMillis: 30_000 });
+  const parsedUrl = new URL(connectionString);
+  const sslMode = parsedUrl.searchParams.get("sslmode")?.toLowerCase();
+  if (!sslMode || !["require", "verify-ca", "verify-full"].includes(sslMode)) {
+    throw new Error("DATABASE_URL must include sslmode=require (or a certificate-verified SSL mode).");
+  }
+  globalThis.yaakaiPostgresPool ??= new Pool({
+    connectionString,
+    max: 5,
+    connectionTimeoutMillis: 10_000,
+    idleTimeoutMillis: 30_000,
+    keepAlive: true,
+  });
   return globalThis.yaakaiPostgresPool;
 }
 
