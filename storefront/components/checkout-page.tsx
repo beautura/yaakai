@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useRef, useState, type FormEvent } from "react";
 import { useCart } from "@/components/cart-provider";
 import { formatPrice, products } from "@/lib/products";
+import { indiaStates } from "@/lib/india-states";
 
 export function CheckoutPage() {
   const { items, subtotal, ready, clear } = useCart();
@@ -60,7 +61,7 @@ export function CheckoutPage() {
               <label className="form-wide">Address<input name="address" autoComplete="address-line1" maxLength={200} required /></label>
               <label className="form-wide">Apartment, suite, etc. <span>(optional)</span><input name="address2" autoComplete="address-line2" maxLength={200} /></label>
               <label>City<input name="city" autoComplete="address-level2" maxLength={100} required /></label>
-              <label>State<input name="state" autoComplete="address-level1" maxLength={100} required /></label>
+              <label>State or union territory<select name="state" autoComplete="address-level1" defaultValue="" required><option value="" disabled>Select a state</option>{indiaStates.map((state) => <option key={state} value={state}>{state}</option>)}</select></label>
               <label>PIN code<input name="postalCode" inputMode="numeric" pattern="[0-9]{6}" autoComplete="postal-code" required /></label>
               <label>Country<input name="country" value="India" readOnly /></label>
             </div>

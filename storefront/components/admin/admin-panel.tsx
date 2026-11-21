@@ -15,7 +15,10 @@ import {
   Check,
   ChevronDown,
   CircleDollarSign,
+  Eye,
+  EyeOff,
   LayoutDashboard,
+  LockKeyhole,
   LogOut,
   Menu,
   Package,
@@ -29,11 +32,13 @@ import {
   Trash2,
   TrendingDown,
   TrendingUp,
+  UserRound,
   Users,
   Wallet,
   X,
 } from "lucide-react";
 import { Logo } from "@/components/site-shell";
+import { indiaStates } from "@/lib/india-states";
 import {
   formatAdminPrice,
   orderStatuses,
@@ -90,9 +95,9 @@ const titleFor: Record<View, string> = {
 function LoginScreen({
   onLogin,
 }: {
-  onLogin: (email: string, password: string) => Promise<string | null>;
+  onLogin: (username: string, password: string) => Promise<string | null>;
 }) {
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -101,74 +106,49 @@ function LoginScreen({
     event.preventDefault();
     setBusy(true);
     setError("");
-    const result = await onLogin(email, password);
+    const result = await onLogin(username, password);
     setError(result || "");
     setBusy(false);
   }
   return (
     <main className="admin-login-page">
-      <section className="admin-login">
-        <Logo />
-        <p className="admin-kicker">STORE MANAGEMENT</p>
-        <h1>Welcome back</h1>
-        <p className="admin-login-copy">
-          Sign in to your Yaakai admin workspace.
-        </p>
-        <form onSubmit={submit}>
-          <label>
-            Email address
-            <input
-              type="email"
-              autoComplete="username"
-              required
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@yaakai.in"
-            />
-          </label>
-          <label>
-            Password
-            <span className="password-field">
-              <input
-                type={showPassword ? "text" : "password"}
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter password"
-              />
-              <button
-                type="button"
-                className="text-action"
-                onClick={() => setShowPassword((value) => !value)}
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
-            </span>
-          </label>
-          {error && (
-            <p className="admin-login-error" role="alert">
-              {error}
-            </p>
-          )}
-          <button
-            className="admin-primary login-submit"
-            type="submit"
-            disabled={busy}
-          >
-            {busy ? "Signing in…" : "Sign in"}{" "}
-            {!busy && <ArrowUpRight size={16} />}
-          </button>
-        </form>
-        <div className="preview-notice">
-          <AlertTriangle size={16} />
-          <span>
-            Sign-in uses server credentials. Configure the admin environment
-            variables and PostgreSQL connection before use.
-          </span>
-        </div>
-      </section>
-      <span className="admin-login-foot">YAAKAI · STORE OPERATIONS</span>
+      <div className="admin-login-shell">
+        <section className="admin-login-brand" aria-label="Yaakai">
+          <Image className="admin-login-brand-logo" src="/images/yaakai/admin-login-brand.png" alt="Yaakai - goodness infused" width={150} height={143} priority />
+          <div>
+            <h1>Traditional goodness, <em>managed with care.</em></h1>
+            <p>Traditional Tamil flavours, thoughtfully crafted for everyday life.</p>
+          </div>
+        </section>
+        <section className="admin-login" aria-labelledby="admin-login-title">
+          <Image className="admin-login-card-logo" src="/images/yaakai/admin-login-logo.png" alt="Yaakai" width={108} height={103} priority />
+          <div className="admin-login-head">
+            <span className="admin-login-badge">Admin portal</span>
+            <h2 id="admin-login-title">Welcome back</h2>
+            <p>Sign in to manage your Yaakai store</p>
+          </div>
+          <form onSubmit={submit}>
+            <div className="login-field">
+              <label htmlFor="admin-username">Username</label>
+              <div className="login-input">
+                <UserRound size={18} aria-hidden="true" />
+                <input id="admin-username" name="username" type="text" autoComplete="username" required value={username} onChange={(event) => setUsername(event.target.value)} placeholder="Username" />
+              </div>
+            </div>
+            <div className="login-field">
+              <label htmlFor="admin-password">Password</label>
+              <div className="login-input">
+                <LockKeyhole size={18} aria-hidden="true" />
+                <input id="admin-password" name="password" type={showPassword ? "text" : "password"} autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Enter password" />
+                <button type="button" className="login-password-toggle" onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} title={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}>{showPassword ? <EyeOff size={18} /> : <Eye size={18} />}</button>
+              </div>
+            </div>
+            {error && <p className="admin-login-error" role="alert">{error}</p>}
+            <button className="login-submit" type="submit" disabled={busy}>{busy ? "Signing in…" : "Sign in to dashboard"}</button>
+          </form>
+          <p className="admin-login-foot">Authorised staff only.<br />© {new Date().getFullYear()} Yaakai · goodness infused</p>
+        </section>
+      </div>
     </main>
   );
 }
@@ -547,6 +527,73 @@ function InventoryEditor({
   );
 }
 
+function AdminUsers() {
+  const [users, setUsers] = useState<{ username: string }[]>([]);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() {
+    const response = await fetch("/api/admin/users", { cache: "no-store" });
+    if (!response.ok) throw new Error("Could not load admin users. Check the database setup.");
+    const result = await response.json() as { users: { username: string }[] };
+    setUsers(result.users);
+  }
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/admin/users", { cache: "no-store" }).then((response) => {
+      if (!response.ok) throw new Error("Could not load admin users. Check the database setup.");
+      return response.json() as Promise<{ users: { username: string }[] }>;
+    }).then((result) => { if (active) setUsers(result.users); }).catch((failure) => { if (active) setError(failure.message); });
+    return () => { active = false; };
+  }, []);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const fields = new FormData(form);
+    const username = selected || String(fields.get("username") || "");
+    const password = String(fields.get("password") || "");
+    if (password !== fields.get("confirmPassword")) { setError("Passwords do not match."); return; }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/users", { method: selected ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username, password }) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Could not save the user.");
+      form.reset();
+      setSelected(null);
+      setMessage(selected ? "Password updated. The user must sign in again." : "Admin user created.");
+      await load();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not save the user."); }
+    finally { setBusy(false); }
+  }
+
+  async function remove(username: string) {
+    if (!window.confirm(`Remove admin user ${username}? Their sessions will stop working.`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/users", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ username }) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Could not remove the user.");
+      if (selected === username) setSelected(null);
+      setMessage("Admin user removed.");
+      await load();
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not remove the user."); }
+    finally { setBusy(false); }
+  }
+
+  return <section className="admin-panel"><div className="panel-heading"><div><h2>Admin users</h2><p>All users have full admin access.</p></div></div><div className="payment-qr-controls">
+    {users.map((user) => <div className="admin-user-row" key={user.username}><strong>{user.username}</strong><div className="row-actions"><button className="icon-action" type="button" title="Change password" aria-label={`Change password for ${user.username}`} onClick={() => { setSelected(user.username); setMessage(""); setError(""); }} disabled={busy}><Pencil size={15} /></button><button className="icon-action danger-action" type="button" title="Remove user" aria-label={`Remove ${user.username}`} onClick={() => void remove(user.username)} disabled={busy}><Trash2 size={15} /></button></div></div>)}
+    <form className="admin-user-form" onSubmit={save} key={selected || "new"}><strong>{selected ? `Change password: ${selected}` : "Add user"}</strong>{!selected && <label>Username<input name="username" minLength={3} maxLength={32} pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,31}" autoComplete="off" required /></label>}<label>Password<input name="password" type="password" minLength={12} maxLength={128} autoComplete="new-password" required /></label><label>Confirm password<input name="confirmPassword" type="password" minLength={12} maxLength={128} autoComplete="new-password" required /></label><div className="payment-qr-actions"><button className="admin-primary" type="submit" disabled={busy}>{selected ? "Update password" : "Add user"}</button>{selected && <button className="admin-secondary" type="button" onClick={() => setSelected(null)}>Cancel</button>}</div></form>
+    {error && <p role="alert">{error}</p>}{message && <p role="status">{message}</p>}
+  </div></section>;
+}
+
 function WhatsAppSettings() {
   const [status, setStatus] = useState("disconnected");
   const [qr, setQr] = useState<string | null>(null);
@@ -635,6 +682,35 @@ function PaymentQrSettings() {
   }
 
   return <section className="admin-panel payment-qr-settings"><div className="panel-heading"><div><h2>Payment QR</h2><p>Shown to customers after placing an order.</p></div></div><div className="payment-qr-controls">{hasQr && <Image src={`/api/payment-qr?v=${version}`} alt="Current payment QR code" width={150} height={150} unoptimized />}<form onSubmit={save}><label>QR image<input name="image" type="file" accept="image/png,image/jpeg,image/webp" required /></label><div className="payment-qr-actions"><button className="admin-primary" type="submit" disabled={busy}>Save QR</button>{hasQr && <button className="admin-secondary" type="button" disabled={busy} onClick={remove}>Remove</button>}</div></form>{message && <p role="status">{message}</p>}</div></section>;
+}
+
+function ManualOrderEditor({ products, onClose, onCreated }: { products: AdminProduct[]; onClose: () => void; onCreated: (orderNumber: string) => Promise<void> }) {
+  const activeProducts = products.filter((product) => product.status === "Active");
+  const [id] = useState(() => crypto.randomUUID());
+  const [items, setItems] = useState(() => [{ key: crypto.randomUUID(), productId: activeProducts[0]?.id || "", quantity: 1 }]);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const total = items.reduce((sum, item) => sum + (activeProducts.find((product) => product.id === item.productId)?.price || 0) * item.quantity, 0);
+
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    const form = new FormData(event.currentTarget);
+    try {
+      const response = await fetch("/api/admin/orders", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...Object.fromEntries(form.entries()), id, items: items.map(({ productId, quantity }) => ({ productId, quantity })) }) });
+      const result = await response.json() as { orderNumber?: string; error?: string };
+      if (!response.ok || !result.orderNumber) throw new Error(result.error || "Could not create the order.");
+      await onCreated(result.orderNumber);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not create the order."); }
+    finally { setBusy(false); }
+  }
+
+  return <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !busy) onClose(); }}><section className="admin-modal" role="dialog" aria-modal="true" aria-labelledby="manual-order-title"><div className="modal-heading"><div><p className="admin-kicker">ORDERS</p><h2 id="manual-order-title">Create order</h2></div><button className="icon-button" type="button" aria-label="Close dialog" onClick={onClose} disabled={busy}><X size={19} /></button></div><form onSubmit={submit}><div className="admin-form-grid">
+    <label>Customer name<input name="name" maxLength={100} required /></label><label>Order date<input name="date" type="date" defaultValue={today()} required /></label><label>Phone (optional)<input name="phone" type="tel" maxLength={24} /></label><label>Email (optional)<input name="email" type="email" maxLength={254} /></label><label className="form-wide">Address (optional)<input name="address" maxLength={200} /></label><label>City (optional)<input name="city" maxLength={100} /></label><label>State or union territory (optional)<select name="state" defaultValue=""><option value="">Select a state</option>{indiaStates.map((state) => <option key={state}>{state}</option>)}</select></label><label>PIN code (optional)<input name="postalCode" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} /></label>
+    <div className="form-wide manual-order-items"><strong>Products</strong>{items.map((item, index) => <div className="manual-order-item" key={item.key}><label>Product {index + 1}<select value={item.productId} onChange={(event) => setItems((current) => current.map((entry) => entry.key === item.key ? { ...entry, productId: event.target.value } : entry))} required><option value="" disabled>Select a product</option>{activeProducts.map((product) => <option key={product.id} value={product.id}>{product.name} - {formatAdminPrice(product.price)}</option>)}</select></label><label>Quantity<input type="number" min="1" max="10000" value={item.quantity} onChange={(event) => setItems((current) => current.map((entry) => entry.key === item.key ? { ...entry, quantity: Number(event.target.value) } : entry))} required /></label><button className="icon-action danger-action" type="button" aria-label={`Remove product ${index + 1}`} title="Remove product" onClick={() => setItems((current) => current.filter((entry) => entry.key !== item.key))} disabled={items.length === 1}><Trash2 size={15} /></button></div>)}<button className="admin-link-button" type="button" disabled={!activeProducts.length || items.length >= 20} onClick={() => setItems((current) => [...current, { key: crypto.randomUUID(), productId: activeProducts[0]?.id || "", quantity: 1 }])}><Plus size={15} /> Add product</button>{!activeProducts.length && <p>Add an active product before creating an order.</p>}<strong>Total: {formatAdminPrice(total)}</strong></div>
+  </div>{error && <p role="alert" className="admin-form-error">{error}</p>}<div className="modal-actions"><button className="admin-secondary" type="button" onClick={onClose} disabled={busy}>Cancel</button><button className="admin-primary" type="submit" disabled={busy || !activeProducts.length}>{busy ? "Creating..." : "Create order"}</button></div></form></section></div>;
 }
 
 function OrderDetails({
@@ -740,6 +816,7 @@ export function AdminPanel() {
     InventoryItem | null | undefined
   >(undefined);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
+  const [manualOrder, setManualOrder] = useState(false);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -766,14 +843,14 @@ export function AdminPanel() {
     };
   }, []);
 
-  async function login(email: string, password: string) {
+  async function login(username: string, password: string) {
     let response: Response;
     try {
       response = await fetch("/api/admin/session", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username, password }),
       });
     } catch {
       return "Could not reach the admin server.";
@@ -1071,10 +1148,6 @@ export function AdminPanel() {
           ))}
         </nav>
         <div className="admin-sidebar-bottom">
-          <div className="admin-preview-chip">
-            <span className={dataError ? "connection-offline" : ""} />
-            {dataError ? "DATABASE OFFLINE" : ready ? "POSTGRESQL" : "CONNECTING"}
-          </div>
           <button
             className="admin-logout"
             onClick={() => void signOut()}
@@ -1140,13 +1213,6 @@ export function AdminPanel() {
           )}
           {view === "dashboard" && (
             <section className="admin-view">
-                <div className={`admin-demo-banner${dataError ? " is-error" : ""}`}>
-                  <AlertTriangle size={17} />
-                  <span>
-                    <strong>{dataError ? "Database unavailable" : "PostgreSQL connected"}</strong>
-                    {dataError ? ` · ${dataError}` : " · Admin changes and customer orders are saved to the database."}
-                  </span>
-                </div>
               <div className="metrics-grid">
                 <Metric
                   label="Gross sales"
@@ -1325,9 +1391,7 @@ export function AdminPanel() {
                   <strong>{data.orders.length}</strong>
                   <span>orders in PostgreSQL</span>
                 </div>
-                <button className="admin-secondary" type="button" onClick={() => { void loadAdminData().catch(() => setNotice("Could not refresh orders.")); }}>
-                  <RefreshCw size={14} /> Refresh orders
-                </button>
+                <div className="admin-toolbar-actions"><button className="admin-secondary" type="button" onClick={() => { void loadAdminData().catch(() => setNotice("Could not refresh orders.")); }}><RefreshCw size={14} /> Refresh orders</button><button className="admin-primary" type="button" onClick={() => setManualOrder(true)}><Plus size={14} /> Create order</button></div>
               </div>
               <section className="admin-panel">
                 <div className="panel-heading">
@@ -1945,22 +2009,7 @@ export function AdminPanel() {
                   These settings are stored in PostgreSQL. The current checkout does not apply tax.
                 </p>
               </form>
-              <div className="admin-view"><WhatsAppSettings /><PaymentQrSettings /><section className="admin-panel settings-security">
-                <div className="panel-heading">
-                  <div>
-                    <h2>Access & data</h2>
-                    <p>Server-side configuration</p>
-                  </div>
-                </div>
-                <div className="security-note">
-                  <AlertTriangle size={18} />
-                  <p>
-                    <strong>Signed admin session</strong>
-                    <br />
-                    Admin credentials and a session-signing secret are read only by the server. Keep them out of public environment variables.
-                  </p>
-                </div>
-              </section></div>
+              <div className="admin-view"><AdminUsers /><WhatsAppSettings /><PaymentQrSettings /></div>
             </section>
           )}
         </div>
@@ -1972,6 +2021,7 @@ export function AdminPanel() {
           onClick={() => setMobileSidebar(false)}
         />
       )}
+      {manualOrder && <ManualOrderEditor products={data.products} onClose={() => setManualOrder(false)} onCreated={async (orderNumber) => { await loadAdminData(); setManualOrder(false); setNotice(`${orderNumber} created.`); }} />}
       {productEditor !== undefined && (
         <ProductEditor
           key={productEditor?.id || "new-product"}

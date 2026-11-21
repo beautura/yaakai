@@ -5,7 +5,7 @@ import { getPostgresPool } from "@/lib/postgres";
 export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
-  if (!isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
   if (Number(request.headers.get("content-length")) > 1_100_000) return NextResponse.json({ error: "Image must be less than 1 MB." }, { status: 413 });
   try {
     const form = await request.formData();
@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  if (!isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
   try {
     await getPostgresPool().query("DELETE FROM admin_payment_qr WHERE id=1");
     return NextResponse.json({ ok: true });

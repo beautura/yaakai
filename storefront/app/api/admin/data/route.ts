@@ -36,7 +36,7 @@ function isValidData(value: unknown): value is AdminData {
 }
 
 export async function GET(request: NextRequest) {
-  if (!isAdminRequest(request)) return unauthorized();
+  if (!await isAdminRequest(request)) return unauthorized();
   try {
     const pool = getPostgresPool();
     const [products, orders, inventory, expenses, settings] = await Promise.all([
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   }
 }
 export async function PUT(request: NextRequest) {
-  if (!isAdminRequest(request)) return unauthorized();
+  if (!await isAdminRequest(request)) return unauthorized();
   let data: unknown;
   try { data = await request.json(); } catch { return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 }); }
   if (!isValidData(data)) return NextResponse.json({ error: "Admin data failed validation." }, { status: 400 });

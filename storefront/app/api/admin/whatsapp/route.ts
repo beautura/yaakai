@@ -6,13 +6,13 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
-  if (!isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
   try { return NextResponse.json(await whatsappStatus(), { headers: { "Cache-Control": "no-store" } }); }
   catch { return NextResponse.json({ error: "WhatsApp status is unavailable." }, { status: 503 }); }
 }
 
 export async function POST(request: NextRequest) {
-  if (!isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
   try {
     await connectWhatsApp(true);
     return NextResponse.json(await whatsappStatus(), { headers: { "Cache-Control": "no-store" } });
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  if (!isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
+  if (!await isAdminRequest(request)) return NextResponse.json({ error: "Admin sign-in required." }, { status: 401 });
   try {
     await disconnectWhatsApp();
     return NextResponse.json({ ok: true });

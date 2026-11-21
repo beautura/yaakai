@@ -10,7 +10,7 @@ In Supabase, create a project and use **Connect → Session pooler** to copy its
 
 For local development, copy `.env.example` to `.env.local` and set `DATABASE_URL`, `ADMIN_EMAIL`, and a strong `ADMIN_PASSWORD`. Set `ADMIN_SESSION_SECRET` to at least 32 random characters. Never put these secrets in `NEXT_PUBLIC_` variables or commit `.env.local`. Initialize tables and the starter catalogue/inventory with `npm --prefix storefront run db:setup`; this seeds no orders or expenses.
 
-The admin API verifies credentials on the server and uses a signed, HTTP-only, SameSite=Strict cookie. `DATABASE_URL` must use SSL. The Stock section manages raw materials and store supplies; finished-product stock is managed separately in Products. `/api/health` checks the database and is used by Render before routing traffic.
+The admin API verifies credentials on the server and uses a signed, HTTP-only, SameSite=Strict cookie. The configured `ADMIN_EMAIL` and `ADMIN_PASSWORD` remain the initial administrator login. In Admin Settings, an administrator can create username/password accounts with the same full permissions. Passwords are stored as salted hashes; removing a user or changing their password invalidates their sessions. Sign-in attempt limits are process-local and reset when the service restarts. `DATABASE_URL` must use SSL. The Stock section manages raw materials and store supplies; finished-product stock is managed separately in Products. `/api/health` checks the database and is used by Render before routing traffic.
 
 ## Deploy to Render
 
@@ -21,13 +21,13 @@ The repository root contains `render.yaml`. The Blueprint uses a free Node web s
 3. Run `npm --prefix storefront run db:setup` locally and confirm it succeeds before deploying. Render's free plan does not run pre-deploy commands; repeat the appropriate database setup or migration manually before deploying future schema changes.
 4. Push the repository to GitHub/GitLab/Bitbucket, then in Render choose **New → Blueprint** and select it. Provide the same `DATABASE_URL`, `ADMIN_EMAIL`, and `ADMIN_PASSWORD` during setup. Render generates `ADMIN_SESSION_SECRET`.
 
-After the deploy is healthy, open the Render service URL at `/admin`, sign in with the configured admin email and password, then confirm **POSTGRESQL** in the sidebar. If health checks fail, verify the Supabase session-pooler host, username, password, region, and `sslmode=require` in `DATABASE_URL`.
+After the deploy is healthy, open the Render service URL at `/admin` and sign in with the configured admin email and password. If health checks fail, verify the Supabase session-pooler host, username, password, region, and SSL settings in `DATABASE_URL`.
 
 ## Before Taking Orders
 
-Run the complete `db/schema.sql` in the Supabase SQL Editor before deploying this update; it adds the order address, payment QR, and WhatsApp tables to existing databases and enables row-level security. In Admin Settings, enter the store phone, upload a payment QR, and connect WhatsApp by scanning the pairing QR with Linked Devices. Keep `ADMIN_SESSION_SECRET` stable: changing it requires pairing WhatsApp again.
+Back up Supabase and run the complete `db/schema.sql` in the Supabase SQL Editor before deploying this update; it adds the admin users table and enables row-level security. In Admin Settings, enter the store phone, upload a payment QR, and connect WhatsApp by scanning the pairing QR with Linked Devices. Keep `ADMIN_SESSION_SECRET` stable: changing it requires pairing WhatsApp again.
 
-Checkout records orders as awaiting payment; it does not collect or verify payment. The store must confirm payment and update order/payment statuses in Admin. Product prices are currently defined in `lib/products.ts`; delivery charges and tax are not applied at checkout, and stock is not automatically deducted. Confirm prices, costs, and inventory before taking orders.
+Checkout records orders as awaiting payment; it does not collect or verify payment. The store must confirm payment and update order/payment statuses in Admin. Checkout prices are defined in `lib/products.ts`; manual orders use active products and their prices and costs from Admin Products. Manual orders do not send a WhatsApp confirmation automatically. Delivery charges and tax are not applied, and stock is not automatically deducted. Confirm prices, costs, and inventory before taking orders.
 
 Baileys is an unofficial WhatsApp integration and can stop working or lead to account restrictions. Confirmations are queued in PostgreSQL and retried while connected, but free Render services sleep and can restart, so messages may be delayed or duplicated; delivery is not guaranteed. Test with your own phone before accepting orders. Use a single app instance for WhatsApp, and back up Supabase before launch.
 
