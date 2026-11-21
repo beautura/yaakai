@@ -172,6 +172,11 @@ img { object-fit:cover; }
 .form-wide { grid-column:1/-1; }
 .checkout-form label span { font-weight:400; }
 .checkout-message { margin:25px 0 0; font-size:12px; }
+.checkout-form .checkout-consent { display:flex; align-items:flex-start; gap:9px; line-height:1.5; }
+.checkout-form .checkout-consent input { display:block; width:17px; min-height:17px; margin:1px 0 0; padding:0; flex:none; }
+.checkout-error { color:#a42920; font-size:13px; }
+.payment-qr { margin:24px 0; }
+.payment-qr img { max-width:100%; height:auto; }
 .site-footer { background:var(--dark-green); color:var(--cream); padding:58px 0 22px; }
 .footer-grid { display:grid; grid-template-columns:1.7fr .8fr 1fr 1.5fr; gap:38px; padding-bottom:45px; }
 .footer-grid h3 { color:var(--white); font-size:12px; margin:4px 0 17px; }

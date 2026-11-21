@@ -4,7 +4,7 @@ import { createContext, useContext, useSyncExternalStore } from "react";
 import { products } from "@/lib/products";
 
 type CartItem = { slug: string; weight: string; quantity: number };
-type CartContextValue = { items: CartItem[]; ready: boolean; add: (slug: string, weight: string, quantity?: number) => void; update: (slug: string, weight: string, quantity: number) => void; count: number; subtotal: number };
+type CartContextValue = { items: CartItem[]; ready: boolean; add: (slug: string, weight: string, quantity?: number) => void; update: (slug: string, weight: string, quantity: number) => void; clear: () => void; count: number; subtotal: number };
 const CartContext = createContext<CartContextValue | null>(null);
 const storageKey = "yaakai-next-cart-v1";
 type CartSnapshot = { items: CartItem[]; ready: boolean };
@@ -50,7 +50,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
 
   const count = items.reduce((total, item) => total + item.quantity, 0);
   const subtotal = items.reduce((total, item) => total + (products.find(product => product.slug === item.slug)?.variants.find(variant => variant.weight === item.weight)?.price || 0) * item.quantity, 0);
-  return <CartContext.Provider value={{ items, ready, add, update, count, subtotal }}>{children}</CartContext.Provider>;
+  return <CartContext.Provider value={{ items, ready, add, update, clear: () => saveItems([]), count, subtotal }}>{children}</CartContext.Provider>;
 }
 
 export function useCart() {

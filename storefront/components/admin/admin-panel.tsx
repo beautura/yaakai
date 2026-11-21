@@ -6,6 +6,7 @@ import {
   useSyncExternalStore,
   type FormEvent,
 } from "react";
+import Image from "next/image";
 import {
   AlertTriangle,
   ArrowUpRight,
@@ -21,6 +22,7 @@ import {
   Pencil,
   Plus,
   Receipt,
+  RefreshCw,
   Search,
   Settings,
   ShoppingBag,
@@ -545,14 +547,106 @@ function InventoryEditor({
   );
 }
 
+function WhatsAppSettings() {
+  const [status, setStatus] = useState("disconnected");
+  const [qr, setQr] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    async function refresh() {
+      try {
+        const response = await fetch("/api/admin/whatsapp", { cache: "no-store" });
+        if (!response.ok) throw new Error("WhatsApp status is unavailable.");
+        const result = await response.json() as { status: string; qr: string | null };
+        if (active) { setStatus(result.status); setQr(result.qr); }
+      } catch { if (active) setError("WhatsApp status is unavailable."); }
+    }
+    void refresh();
+    const timer = window.setInterval(refresh, 3000);
+    return () => { active = false; window.clearInterval(timer); };
+  }, []);
+
+  async function connect() {
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/whatsapp", { method: "POST" });
+      const result = await response.json() as { status?: string; qr?: string | null; error?: string };
+      if (!response.ok) throw new Error(result.error || "Could not connect WhatsApp.");
+      setStatus(result.status || "connecting");
+      setQr(result.qr || null);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not connect WhatsApp."); }
+    finally { setBusy(false); }
+  }
+
+  async function reset() {
+    if (!window.confirm("Disconnect WhatsApp and remove its saved session?")) return;
+    setBusy(true);
+    setError("");
+    try {
+      const response = await fetch("/api/admin/whatsapp", { method: "DELETE" });
+      if (!response.ok) throw new Error("Could not disconnect WhatsApp.");
+      setStatus("disconnected");
+      setQr(null);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : "Could not disconnect WhatsApp."); }
+    finally { setBusy(false); }
+  }
+
+  return <section className="admin-panel"><div className="panel-heading"><div><h2>WhatsApp</h2><p>Order confirmations</p></div></div><div className="payment-qr-controls"><p>Status: <strong>{status}</strong></p>{qr && <><Image src={qr} alt="WhatsApp pairing QR code" width={256} height={256} unoptimized /><p>Scan with WhatsApp Linked Devices on the store phone.</p></>}<div className="payment-qr-actions">{status === "disconnected" && <button className="admin-primary" type="button" onClick={connect} disabled={busy}>{busy ? "Connecting..." : "Connect WhatsApp"}</button>}<button className="admin-secondary" type="button" onClick={reset} disabled={busy}>Reset session</button></div>{error && <p role="alert">{error}</p>}</div></section>;
+}
+
+function PaymentQrSettings() {
+  const [version, setVersion] = useState(0);
+  const [hasQr, setHasQr] = useState(false);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/payment-qr?v=${version}`, { cache: "no-store" }).then((response) => setHasQr(response.ok)).catch(() => setHasQr(false));
+  }, [version]);
+
+  async function save(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setBusy(true);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/payment-qr", { method: "POST", body: new FormData(form) });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(result.error || "Could not save the payment QR.");
+      form.reset();
+      setVersion((current) => current + 1);
+      setMessage("Payment QR saved.");
+    } catch (error) { setMessage(error instanceof Error ? error.message : "Could not save the payment QR."); }
+    finally { setBusy(false); }
+  }
+
+  async function remove() {
+    setBusy(true);
+    try {
+      const response = await fetch("/api/admin/payment-qr", { method: "DELETE" });
+      if (!response.ok) throw new Error();
+      setVersion((current) => current + 1);
+      setMessage("Payment QR removed.");
+    } catch { setMessage("Could not remove the payment QR."); }
+    finally { setBusy(false); }
+  }
+
+  return <section className="admin-panel payment-qr-settings"><div className="panel-heading"><div><h2>Payment QR</h2><p>Shown to customers after placing an order.</p></div></div><div className="payment-qr-controls">{hasQr && <Image src={`/api/payment-qr?v=${version}`} alt="Current payment QR code" width={150} height={150} unoptimized />}<form onSubmit={save}><label>QR image<input name="image" type="file" accept="image/png,image/jpeg,image/webp" required /></label><div className="payment-qr-actions"><button className="admin-primary" type="submit" disabled={busy}>Save QR</button>{hasQr && <button className="admin-secondary" type="button" disabled={busy} onClick={remove}>Remove</button>}</div></form>{message && <p role="status">{message}</p>}</div></section>;
+}
+
 function OrderDetails({
   order,
   onClose,
   onStatus,
+  onPayment,
 }: {
   order: AdminOrder;
   onClose: () => void;
   onStatus: (orderId: string, status: OrderStatus) => void;
+  onPayment: (orderId: string, payment: AdminOrder["payment"]) => void;
 }) {
   return (
     <div
@@ -585,6 +679,7 @@ function OrderDetails({
           <strong>{order.customer}</strong>
           <span>{order.email}</span>
           <span>{order.phone}</span>
+          {order.deliveryAddress?.address && <span>{[order.deliveryAddress.address, order.deliveryAddress.address2, order.deliveryAddress.city, order.deliveryAddress.state, order.deliveryAddress.postalCode, order.deliveryAddress.country].filter(Boolean).join(", ")}</span>}
         </div>
         <div className="order-lines">
           {order.items.map((item, index) => (
@@ -610,10 +705,14 @@ function OrderDetails({
             ))}
           </select>
         </label>
-        <p className="preview-note">
-          Payment processing, shipping labels, and customer notifications are
-          not connected to this order record.
-        </p>
+        <label className="status-editor">
+          Payment status
+          <select value={order.payment} onChange={(event) => onPayment(order.id, event.target.value as AdminOrder["payment"])}>
+            <option>Awaiting payment</option>
+            <option>Paid</option>
+            <option>Refunded</option>
+          </select>
+        </label>
       </section>
     </div>
   );
@@ -761,19 +860,23 @@ export function AdminPanel() {
   }
 
   async function updateOrderStatus(orderId: string, status: OrderStatus) {
-    const saved = await persist(
-      (current) => ({
-        ...current,
-        orders: current.orders.map((order) =>
-          order.id === orderId ? { ...order, status } : order,
-        ),
-      }),
-      `${orderId} updated`,
-    );
-    if (saved)
-      setSelectedOrder((current) =>
-        current?.id === orderId ? { ...current, status } : current,
-      );
+    await updateOrder(orderId, { status });
+  }
+
+  async function updateOrder(orderId: string, changes: { status?: OrderStatus; payment?: AdminOrder["payment"] }) {
+    try {
+      const response = await fetch("/api/admin/orders", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: orderId, ...changes }),
+      });
+      if (!response.ok) throw new Error("Could not update the order.");
+      const refreshed = await loadAdminData();
+      setSelectedOrder((current) => current?.id === orderId ? refreshed.orders.find((order) => order.id === orderId) ?? null : current);
+      setNotice(`${orderId} updated.`);
+    } catch {
+      setNotice("Order update failed. Please retry.");
+    }
   }
 
   async function saveProduct(draft: ProductDraft) {
@@ -1041,7 +1144,7 @@ export function AdminPanel() {
                   <AlertTriangle size={17} />
                   <span>
                     <strong>{dataError ? "Database unavailable" : "PostgreSQL connected"}</strong>
-                    {dataError ? ` · ${dataError}` : " · Admin changes are saved transactionally. Customer orders appear after checkout is connected."}
+                    {dataError ? ` · ${dataError}` : " · Admin changes and customer orders are saved to the database."}
                   </span>
                 </div>
               <div className="metrics-grid">
@@ -1222,9 +1325,9 @@ export function AdminPanel() {
                   <strong>{data.orders.length}</strong>
                   <span>orders in PostgreSQL</span>
                 </div>
-                <div className="toolbar-note">
-                  Update fulfilment status directly from the order list.
-                </div>
+                <button className="admin-secondary" type="button" onClick={() => { void loadAdminData().catch(() => setNotice("Could not refresh orders.")); }}>
+                  <RefreshCw size={14} /> Refresh orders
+                </button>
               </div>
               <section className="admin-panel">
                 <div className="panel-heading">
@@ -1842,7 +1945,7 @@ export function AdminPanel() {
                   These settings are stored in PostgreSQL. The current checkout does not apply tax.
                 </p>
               </form>
-              <section className="admin-panel settings-security">
+              <div className="admin-view"><WhatsAppSettings /><PaymentQrSettings /><section className="admin-panel settings-security">
                 <div className="panel-heading">
                   <div>
                     <h2>Access & data</h2>
@@ -1857,7 +1960,7 @@ export function AdminPanel() {
                     Admin credentials and a session-signing secret are read only by the server. Keep them out of public environment variables.
                   </p>
                 </div>
-              </section>
+              </section></div>
             </section>
           )}
         </div>
@@ -1890,6 +1993,7 @@ export function AdminPanel() {
           order={selectedOrder}
           onClose={() => setSelectedOrder(null)}
           onStatus={updateOrderStatus}
+          onPayment={(orderId, payment) => { void updateOrder(orderId, { payment }); }}
         />
       )}
     </main>

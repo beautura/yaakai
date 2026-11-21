@@ -25,7 +25,11 @@ After the deploy is healthy, open the Render service URL at `/admin`, sign in wi
 
 ## Before Taking Orders
 
-The public checkout is not yet connected to create PostgreSQL orders or process payment. The admin will show orders only after a real checkout/order endpoint is implemented. Confirm sample prices, costs, and the initial inventory quantities before using financial reports; replace the starter values in `scripts/init-db.mjs` as needed before first setup. Back up Supabase, use a custom domain, and configure transactional email/shipping/payment integrations before launch.
+Run the complete `db/schema.sql` in the Supabase SQL Editor before deploying this update; it adds the order address, payment QR, and WhatsApp tables to existing databases and enables row-level security. In Admin Settings, enter the store phone, upload a payment QR, and connect WhatsApp by scanning the pairing QR with Linked Devices. Keep `ADMIN_SESSION_SECRET` stable: changing it requires pairing WhatsApp again.
+
+Checkout records orders as awaiting payment; it does not collect or verify payment. The store must confirm payment and update order/payment statuses in Admin. Product prices are currently defined in `lib/products.ts`; delivery charges and tax are not applied at checkout, and stock is not automatically deducted. Confirm prices, costs, and inventory before taking orders.
+
+Baileys is an unofficial WhatsApp integration and can stop working or lead to account restrictions. Confirmations are queued in PostgreSQL and retried while connected, but free Render services sleep and can restart, so messages may be delayed or duplicated; delivery is not guaranteed. Test with your own phone before accepting orders. Use a single app instance for WhatsApp, and back up Supabase before launch.
 
 ## Business Details
 
@@ -48,7 +52,7 @@ Default contact details are set to 226, Gandhi Road, T.R.Pattinam, Karaikal, Pud
 
 - Supplied Yaakai photographs are installed in `public/images/yaakai/` and used across the hero, product cards, story, and section banners.
 - Confirm the sample weights and prices in `lib/products.ts`, then add verified ingredient lists and any further product variants.
-- Connect a real newsletter provider, shipping calculation, order service, and payment gateway. Checkout currently collects no data and cannot place an order.
+- Connect a real newsletter provider, shipping calculation, and payment gateway if needed.
 - Verify business claims, legal policies, contact information, and image usage rights before publishing.
 
-The customer cart is stored in the browser's local storage. Prices are illustrative and must be validated on the server when a real checkout is implemented.
+The customer cart is stored in the browser's local storage. Checkout validates product variants and prices on the server.

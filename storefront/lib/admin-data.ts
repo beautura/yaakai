@@ -15,6 +15,7 @@ export type AdminOrder = {
   customer: string;
   email: string;
   phone: string;
+  deliveryAddress?: { address: string; address2: string; city: string; state: string; postalCode: string; country: string };
   date: string;
   items: string[];
   total: number;

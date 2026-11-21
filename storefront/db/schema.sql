@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS admin_orders (
 );
 CREATE INDEX IF NOT EXISTS admin_orders_ordered_on_idx ON admin_orders (ordered_on DESC);
 CREATE INDEX IF NOT EXISTS admin_orders_customer_email_idx ON admin_orders (email);
+ALTER TABLE admin_orders ADD COLUMN IF NOT EXISTS delivery_address JSONB NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE admin_orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
+CREATE INDEX IF NOT EXISTS admin_orders_phone_created_idx ON admin_orders (phone, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS admin_inventory (
   id TEXT PRIMARY KEY,
@@ -58,3 +61,32 @@ CREATE TABLE IF NOT EXISTS admin_settings (
   tax_rate NUMERIC(5,2) NOT NULL DEFAULT 0 CHECK (tax_rate >= 0),
   currency TEXT NOT NULL DEFAULT 'INR'
 );
+
+CREATE TABLE IF NOT EXISTS admin_payment_qr (
+  id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+  content_type TEXT NOT NULL CHECK (content_type IN ('image/png', 'image/jpeg', 'image/webp')),
+  image BYTEA NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS whatsapp_auth (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS whatsapp_outbox (
+  order_id TEXT PRIMARY KEY REFERENCES admin_orders(id) ON DELETE CASCADE,
+  phone TEXT NOT NULL,
+  message TEXT NOT NULL,
+  sent_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE admin_products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_orders ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_inventory ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_payment_qr ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_auth ENABLE ROW LEVEL SECURITY;
+ALTER TABLE whatsapp_outbox ENABLE ROW LEVEL SECURITY;
